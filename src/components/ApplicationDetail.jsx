@@ -57,12 +57,12 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  const updateRecommenderStatus = async (recId, status) => {
-    const { error } = await supabase.from('recommenders').update({ status }).eq('id', recId);
+  const updateRecommender = async (recId, field, value) => {
+    const { error } = await supabase.from('recommenders').update({ [field]: value }).eq('id', recId);
     if (error) console.error(error);
     else {
-      setRecommenders(recommenders.map((r) => (r.id === recId ? { ...r, status } : r)));
-      updateProgress();
+      setRecommenders(recommenders.map((r) => (r.id === recId ? { ...r, [field]: value } : r)));
+      if (field === 'status') updateProgress();
     }
   };
 
@@ -111,20 +111,14 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  const addRecommender = async (name) => {
-    const newRec = { application_id: id, name: name || 'New Recommender', status: 'Identified' };
+  const addRecommender = async () => {
+    const newRec = { application_id: id, name: 'Recommender', status: 'Unidentified', type: null, email: null };
     const { data, error } = await supabase.from('recommenders').insert([newRec]).select().single();
     if (error) console.error(error);
     else {
       setRecommenders([...recommenders, data]);
       updateProgress();
     }
-  };
-
-  const updateRecommenderName = async (recId, name) => {
-    const { error } = await supabase.from('recommenders').update({ name }).eq('id', recId);
-    if (error) console.error(error);
-    else setRecommenders(recommenders.map((r) => (r.id === recId ? { ...r, name } : r)));
   };
 
   const deleteRecommender = async (recId) => {
@@ -277,49 +271,91 @@ export default function ApplicationDetail({ session }) {
       </ul>
 
       <h3 className="text-2xl font-bold mb-4 text-neutralDark">Recommenders</h3>
-      <ul className="mb-6">
-        {recommenders.map((rec) => (
-          <li key={rec.id} className="mb-2 flex items-center">
-            {editMode ? (
-              <input
-                type="text"
-                value={rec.name}
-                onChange={(e) => updateRecommenderName(rec.id, e.target.value)}
-                className="p-1 border border-gray-300 rounded mr-2 flex-1"
-              />
-            ) : (
-              <span className="flex-1">{rec.name}</span>
-            )}
-            {!editMode ? (
-              <select
-                value={rec.status}
-                onChange={(e) => updateRecommenderStatus(rec.id, e.target.value)}
-                className="p-1 border border-gray-300 rounded ml-2"
-              >
-                <option>Identified</option>
-                <option>Contacted</option>
-                <option>In Progress</option>
-                <option>Submitted</option>
-              </select>
-            ) : (
-              <span className="ml-2">{rec.status}</span>
-            )}
-            {editMode && (
-              <button onClick={() => deleteRecommender(rec.id)} className="ml-2 text-red-500">
-                Delete
-              </button>
-            )}
-          </li>
-        ))}
-        {editMode && (
-          <div className="mt-4">
-            <input type="text" id="newRec" placeholder="New Recommender Name" className="p-1 border border-gray-300 rounded mr-2" />
-            <button onClick={() => addRecommender(document.getElementById('newRec').value)} className="bg-secondary text-white py-1 px-3 rounded">
-              Add
-            </button>
-          </div>
-        )}
-      </ul>
+      <table className="w-full mb-6 border-collapse">
+        <thead>
+          <tr className="bg-neutralLight">
+            <th className="p-2 text-left text-neutralDark">Name</th>
+            <th className="p-2 text-left text-neutralDark">Type</th>
+            <th className="p-2 text-left text-neutralDark">Email</th>
+            <th className="p-2 text-left text-neutralDark">Status</th>
+            {editMode && <th className="p-2 text-left text-neutralDark">Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {recommenders.map((rec) => (
+            <tr key={rec.id} className="border-b">
+              <td className="p-2">
+                {rec.status !== 'Unidentified' && !editMode ? (
+                  <input
+                    type="text"
+                    value={rec.name}
+                    onChange={(e) => updateRecommender(rec.id, 'name', e.target.value)}
+                    className="p-1 border border-gray-300 rounded w-full"
+                  />
+                ) : (
+                  <span>{rec.name}</span>
+                )}
+              </td>
+              <td className="p-2">
+                {rec.status !== 'Unidentified' && !editMode ? (
+                  <select
+                    value={rec.type || ''}
+                    onChange={(e) => updateRecommender(rec.id, 'type', e.target.value || null)}
+                    className="p-1 border border-gray-300 rounded w-full"
+                  >
+                    <option value="">Select Type</option>
+                    <option>Academic</option>
+                    <option>Professional</option>
+                  </select>
+                ) : (
+                  <span>{rec.type || 'N/A'}</span>
+                )}
+              </td>
+              <td className="p-2">
+                {rec.status !== 'Unidentified' && !editMode ? (
+                  <input
+                    type="email"
+                    value={rec.email || ''}
+                    onChange={(e) => updateRecommender(rec.id, 'email', e.target.value || null)}
+                    className="p-1 border border-gray-300 rounded w-full"
+                  />
+                ) : (
+                  <span>{rec.email || 'N/A'}</span>
+                )}
+              </td>
+              <td className="p-2">
+                {!editMode ? (
+                  <select
+                    value={rec.status}
+                    onChange={(e) => updateRecommender(rec.id, 'status', e.target.value)}
+                    className="p-1 border border-gray-300 rounded w-full"
+                  >
+                    <option>Unidentified</option>
+                    <option>Identified</option>
+                    <option>Contacted</option>
+                    <option>In Progress</option>
+                    <option>Submitted</option>
+                  </select>
+                ) : (
+                  <span>{rec.status}</span>
+                )}
+              </td>
+              {editMode && (
+                <td className="p-2">
+                  <button onClick={() => deleteRecommender(rec.id)} className="text-red-500">
+                    Delete
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!editMode && (
+        <button onClick={addRecommender} className="bg-secondary text-white py-1 px-3 rounded mt-2">
+          Add Recommender
+        </button>
+      )}
 
       <h3 className="text-2xl font-bold mb-4 text-neutralDark">Links</h3>
       <div className="mb-4">

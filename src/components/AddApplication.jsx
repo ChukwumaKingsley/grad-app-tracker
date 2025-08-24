@@ -17,7 +17,7 @@ export default function AddApplication({ session }) {
   });
   const [requiresRecommenders, setRequiresRecommenders] = useState(false);
   const [numRecommenders, setNumRecommenders] = useState(0);
-  const [recommenderNames, setRecommenderNames] = useState([]);
+  const [recommenderTypes, setRecommenderTypes] = useState('');
   const [requirements, setRequirements] = useState({
     'Writing Sample': { selected: false, criteria_type: '', criteria_value: '' },
     'Personal Statement': { selected: false, criteria_type: '', criteria_value: '' },
@@ -45,7 +45,6 @@ export default function AddApplication({ session }) {
       [reqName]: {
         ...requirements[reqName],
         selected: !requirements[reqName].selected,
-        // Reset fields when unchecking
         criteria_type: requirements[reqName].selected ? '' : requirements[reqName].criteria_type,
         criteria_value: requirements[reqName].selected ? '' : requirements[reqName].criteria_value,
         min_score: requirements[reqName].selected ? '' : requirements[reqName].min_score,
@@ -58,17 +57,6 @@ export default function AddApplication({ session }) {
       ...requirements,
       [reqName]: { ...requirements[reqName], [field]: value },
     });
-  };
-
-  const handleNumRecommenders = (num) => {
-    setNumRecommenders(num);
-    setRecommenderNames(Array(num).fill(''));
-  };
-
-  const updateRecommenderName = (index, name) => {
-    const newNames = [...recommenderNames];
-    newNames[index] = name;
-    setRecommenderNames(newNames);
   };
 
   const handleSubmit = async () => {
@@ -119,10 +107,11 @@ export default function AddApplication({ session }) {
     }
 
     // Insert recommenders
-    if (requiresRecommenders && recommenderNames.length > 0) {
-      const recInsert = recommenderNames.map((name, idx) => ({
-        name: name || `Recommender ${idx + 1}`,
-        status: 'Identified',
+    if (requiresRecommenders && numRecommenders > 0) {
+      const recInsert = Array.from({ length: numRecommenders }, (_, idx) => ({
+        name: `Recommender ${idx + 1}`,
+        type: recommenderTypes.split(',').length > idx ? recommenderTypes.split(',')[idx].trim() : null,
+        status: 'Unidentified',
         application_id: app.id,
       }));
       const { error: recError } = await supabase.from('recommenders').insert(recInsert);
@@ -246,43 +235,37 @@ export default function AddApplication({ session }) {
               <input
                 type="checkbox"
                 checked={requiresRecommenders}
-                onChange={() => setRequiresRecommenders(!requiresRecommenders)}
+                onChange={() => {
+                  setRequiresRecommenders(!requiresRecommenders);
+                  if (!requiresRecommenders) {
+                    setNumRecommenders(0);
+                    setRecommenderTypes('');
+                  }
+                }}
               />{' '}
               Recommenders Required
             </label>
-          </div>
-        );
-      case 4:
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-4 text-neutralDark">Recommenders</h2>
-            {requiresRecommenders ? (
-              <>
+            {requiresRecommenders && (
+              <div className="ml-6">
                 <input
                   type="number"
                   min="0"
                   value={numRecommenders}
-                  onChange={(e) => handleNumRecommenders(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setNumRecommenders(parseInt(e.target.value) || 0)}
                   placeholder="Number of Recommenders"
                   className="w-full p-2 mb-4 border border-gray-300 rounded"
                 />
-                {recommenderNames.map((name, idx) => (
-                  <input
-                    key={idx}
-                    type="text"
-                    placeholder={`Recommender ${idx + 1} Name`}
-                    value={name}
-                    onChange={(e) => updateRecommenderName(idx, e.target.value)}
-                    className="w-full p-2 mb-2 border border-gray-300 rounded"
-                  />
-                ))}
-              </>
-            ) : (
-              <p className="text-neutralDark">Recommenders not required.</p>
+                <textarea
+                  placeholder="Recommender Types (e.g., 1 Academic, 1 Professional)"
+                  value={recommenderTypes}
+                  onChange={(e) => setRecommenderTypes(e.target.value)}
+                  className="w-full p-2 mb-4 border border-gray-300 rounded"
+                />
+              </div>
             )}
           </div>
         );
-      case 5:
+      case 4:
         return (
           <div>
             <h2 className="text-2xl font-bold mb-4 text-neutralDark">Links & Status</h2>
@@ -332,11 +315,11 @@ export default function AddApplication({ session }) {
     <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
       <div className="mb-8">
         <div className="flex justify-between">
-          {Array(5).fill(0).map((_, i) => (
-            <div key={i} className={`w-1/5 h-1 ${i + 1 <= step ? 'bg-accent' : 'bg-gray-300'}`} />
+          {Array(4).fill(0).map((_, i) => (
+            <div key={i} className={`w-1/4 h-1 ${i + 1 <= step ? 'bg-accent' : 'bg-gray-300'}`} />
           ))}
         </div>
-        <p className="text-center mt-2 text-neutralDark">Step {step}/5</p>
+        <p className="text-center mt-2 text-neutralDark">Step {step}/4</p>
       </div>
       {renderStep()}
       <div className="flex justify-between mt-8">
@@ -345,7 +328,7 @@ export default function AddApplication({ session }) {
             Back
           </button>
         )}
-        {step < 5 ? (
+        {step < 4 ? (
           <button onClick={nextStep} className="bg-primary text-white py-2 px-4 rounded ml-auto">
             Next
           </button>
