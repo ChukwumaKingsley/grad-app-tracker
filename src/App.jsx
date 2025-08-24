@@ -6,15 +6,24 @@ import { Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './components/Dashboard.jsx';
 import AddApplication from './components/AddApplication.jsx';
 import ApplicationDetail from './components/ApplicationDetail.jsx';
+import UserProfile from './components/UserProfile.jsx';
+import { FaUserCircle } from 'react-icons/fa';
 import './index.css';
 
 export default function App() {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    fetchSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -23,11 +32,17 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutralLight">
         <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-          <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={[]} />
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            providers={[]}
+          />
         </div>
       </div>
     );
   }
+
+  const userName = session.user.user_metadata?.full_name || session.user.email;
 
   return (
     <div className="min-h-screen bg-neutralLight">
@@ -36,9 +51,15 @@ export default function App() {
           <Link to="/" className="text-2xl font-bold hover:text-secondary">
             Grad App Tracker
           </Link>
-          <button onClick={() => supabase.auth.signOut()} className="bg-secondary hover:bg-blue-700 text-white py-2 px-4 rounded">
-            Sign Out
-          </button>
+          <div className="flex items-center space-x-4">
+            <span className="text-lg hidden md:block">Welcome, {userName}!</span>
+            <Link to="/profile" className="text-white p-2 rounded-full hover:bg-secondary transition-colors" title="My Profile">
+              <FaUserCircle size={24} />
+            </Link>
+            <button onClick={() => supabase.auth.signOut()} className="bg-secondary hover:bg-blue-700 text-white py-2 px-4 rounded">
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
       <main className="container mx-auto p-4">
@@ -46,6 +67,7 @@ export default function App() {
           <Route path="/" element={<Dashboard session={session} />} />
           <Route path="/add" element={<AddApplication session={session} />} />
           <Route path="/application/:id" element={<ApplicationDetail session={session} />} />
+          <Route path="/profile" element={<UserProfile session={session} />} />
         </Routes>
       </main>
     </div>

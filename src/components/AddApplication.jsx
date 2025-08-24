@@ -12,7 +12,6 @@ export default function AddApplication({ session }) {
     faculty: '',
     department: '',
     application_email: '',
-    application_password: '',
     country: '',
     level: 'Masters',
     application_fee: '',
@@ -129,7 +128,6 @@ export default function AddApplication({ session }) {
         faculty: formData.faculty,
         department: formData.department,
         application_email: formData.application_email,
-        application_password: formData.application_password,
         country: formData.country,
         level: formData.level,
         application_fee: formData.application_fee,
@@ -289,19 +287,6 @@ export default function AddApplication({ session }) {
               id="application_email"
               name="application_email"
               value={formData.application_email}
-              onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="application_password" className="block text-neutralDark font-bold mb-2">
-              Application Password
-            </label>
-            <input
-              type="password"
-              id="application_password"
-              name="application_password"
-              value={formData.application_password}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
             />
