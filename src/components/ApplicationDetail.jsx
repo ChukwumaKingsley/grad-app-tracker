@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { SkeletonDetail } from './SkeletonLoader';
 
 export default function ApplicationDetail({ session }) {
@@ -12,6 +14,7 @@ export default function ApplicationDetail({ session }) {
   const [recommenders, setRecommenders] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [buttonLoading, setButtonLoading] = useState({}); // Track loading state for each button
   const [newRequirement, setNewRequirement] = useState({
     name: '',
     criteria_type: null,
@@ -26,15 +29,16 @@ export default function ApplicationDetail({ session }) {
     fee_waived: false,
     fee_waiver_details: '',
   });
-  const [newRecommender, setNewRecommender] = useState(null); // For adding/editing recommender
-  const [pendingChanges, setPendingChanges] = useState({}); // Track requirement changes
-  const [appChanges, setAppChanges] = useState({}); // Track application field changes
+  const [newRecommender, setNewRecommender] = useState(null);
+  const [pendingChanges, setPendingChanges] = useState({});
+  const [appChanges, setAppChanges] = useState({});
 
   useEffect(() => {
     fetchData();
   }, [id]);
 
   const fetchData = async () => {
+    setLoading(true);
     const { data: appData, error: appError } = await supabase.from('applications').select('*').eq('id', id).single();
     if (appError || !appData || appData.user_id !== session.user.id) {
       console.error(appError);
@@ -68,6 +72,38 @@ export default function ApplicationDetail({ session }) {
     setLoading(false);
   };
 
+  const getStatusColor = (status, type = 'application') => {
+    if (type === 'application') {
+      switch (status) {
+        case 'Planning': return 'bg-gray-200 text-gray-800';
+        case 'In Progress': return 'bg-blue-200 text-blue-800';
+        case 'Submitted': return 'bg-green-200 text-green-800';
+        case 'Abandoned': return 'bg-red-200 text-red-800';
+        case 'Waitlisted': return 'bg-yellow-200 text-yellow-800';
+        case 'Awarded': return 'bg-purple-200 text-purple-800';
+        default: return 'bg-gray-200 text-gray-800';
+      }
+    } else {
+      switch (status) {
+        case 'Unidentified': return 'bg-gray-200 text-gray-800';
+        case 'Identified': return 'bg-blue-200 text-blue-800';
+        case 'Contacted': return 'bg-yellow-200 text-yellow-800';
+        case 'In Progress': return 'bg-orange-200 text-orange-800';
+        case 'Submitted': return 'bg-green-200 text-green-800';
+        default: return 'bg-gray-200 text-gray-800';
+      }
+    }
+  };
+
+  const getScoreColor = (completed, total) => {
+    if (total === 0) return 'text-gray-500';
+    const ratio = completed / total;
+    if (ratio === 0) return 'text-red-500';
+    if (ratio === 1) return 'text-green-500';
+    if (ratio <= 0.5) return 'text-yellow-500';
+    return 'text-green-600';
+  };
+
   const updateProgress = async () => {
     const completedReqs = requirements.filter((r) => r.is_completed).length;
     const submittedRecs = recommenders.filter((r) => r.status === 'Submitted').length;
@@ -80,11 +116,16 @@ export default function ApplicationDetail({ session }) {
   };
 
   const toggleRequirement = async (reqId, isCompleted) => {
+    setButtonLoading((prev) => ({ ...prev, [`req-${reqId}`]: true }));
     const { error } = await supabase.from('requirements').update({ is_completed: isCompleted }).eq('id', reqId);
-    if (error) console.error(error);
-    else {
+    setButtonLoading((prev) => ({ ...prev, [`req-${reqId}`]: false }));
+    if (error) {
+      toast.error('Failed to update requirement status');
+      console.error(error);
+    } else {
       setRequirements(requirements.map((r) => (r.id === reqId ? { ...r, is_completed: isCompleted } : r)));
       updateProgress();
+      toast.success('Requirement status updated');
     }
   };
 
@@ -94,30 +135,49 @@ export default function ApplicationDetail({ session }) {
 
   const saveAppChanges = async () => {
     if (Object.keys(appChanges).length === 0) return;
+    setButtonLoading((prev) => ({ ...prev, saveApp: true }));
     const { error } = await supabase.from('applications').update(appChanges).eq('id', id);
+    setButtonLoading((prev) => ({ ...prev, saveApp: false }));
     if (error) {
+      toast.error('Failed to save application changes');
       console.error(error);
       return;
     }
     setApp({ ...app, ...appChanges });
     setNewRequirement({ ...newRequirement, ...appChanges });
     setAppChanges({});
+    toast.success('Application changes saved');
   };
 
   const addImportantDate = async () => {
+    setButtonLoading((prev) => ({ ...prev, addDate: true }));
     const newDate = { application_id: id, name: 'New Date', date: new Date().toISOString().split('T')[0] };
     const { data, error } = await supabase.from('important_dates').insert([newDate]).select().single();
-    if (error) console.error(error);
-    else setImportantDates([...importantDates, data]);
+    setButtonLoading((prev) => ({ ...prev, addDate: false }));
+    if (error) {
+      toast.error('Failed to add important date');
+      console.error(error);
+    } else {
+      setImportantDates([...importantDates, data]);
+      toast.success('Important date added');
+    }
   };
 
   const updateImportantDate = async (dateId, field, value) => {
+    setButtonLoading((prev) => ({ ...prev, [`date-${dateId}-${field}`]: true }));
     const { error } = await supabase.from('important_dates').update({ [field]: value }).eq('id', dateId);
-    if (error) console.error(error);
-    else setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
+    setButtonLoading((prev) => ({ ...prev, [`date-${dateId}-${field}`]: false }));
+    if (error) {
+      toast.error('Failed to update important date');
+      console.error(error);
+    } else {
+      setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
+      toast.success('Important date updated');
+    }
   };
 
   const adjustRecommendersTable = async (newNumRecommenders, oldNumRecommenders) => {
+    setButtonLoading((prev) => ({ ...prev, adjustRecommenders: true }));
     const currentRecommenders = await supabase.from('recommenders').select('*').eq('application_id', id).order('id');
     const currentCount = currentRecommenders.data?.length || 0;
     const newCount = parseInt(newNumRecommenders) || 0;
@@ -128,14 +188,24 @@ export default function ApplicationDetail({ session }) {
         status: 'Unidentified',
       }));
       const { error } = await supabase.from('recommenders').insert(additionalRecs);
-      if (error) console.error(error);
+      if (error) {
+        toast.error('Failed to adjust recommenders table');
+        console.error(error);
+        setButtonLoading((prev) => ({ ...prev, adjustRecommenders: false }));
+        return;
+      }
     } else if (newCount < currentCount) {
       const toDelete = currentRecommenders.data
         .filter((r) => r.status === 'Unidentified')
         .slice(0, currentCount - newCount);
       if (toDelete.length > 0) {
         const { error } = await supabase.from('recommenders').delete().in('id', toDelete.map((r) => r.id));
-        if (error) console.error(error);
+        if (error) {
+          toast.error('Failed to adjust recommenders table');
+          console.error(error);
+          setButtonLoading((prev) => ({ ...prev, adjustRecommenders: false }));
+          return;
+        }
       }
     }
     const { data: updatedRecs } = await supabase.from('recommenders').select('*').eq('application_id', id).order('id');
@@ -151,6 +221,7 @@ export default function ApplicationDetail({ session }) {
       });
     }
     setRecommenders(paddedRecommenders.slice(0, newCount));
+    setButtonLoading((prev) => ({ ...prev, adjustRecommenders: false }));
     updateProgress();
   };
 
@@ -165,6 +236,8 @@ export default function ApplicationDetail({ session }) {
     if (name === 'Application Fee' && fee_waived && !fee_waiver_details) return;
     if (name === 'Recommenders' && !num_recommenders) return;
 
+    setButtonLoading((prev) => ({ ...prev, addRequirement: true }));
+
     if (name === 'Application Fee') {
       await updateAppField('application_fee', fee_waived ? '0' : application_fee);
       await updateAppField('fee_waived', fee_waived);
@@ -177,7 +250,9 @@ export default function ApplicationDetail({ session }) {
       if (existingRecommenderReq) {
         const { error } = await supabase.from('requirements').update({ num_recommenders }).eq('id', existingRecommenderReq.id);
         if (error) {
+          toast.error('Failed to update recommenders requirement');
           console.error(error);
+          setButtonLoading((prev) => ({ ...prev, addRequirement: false }));
           return;
         }
         setRequirements(requirements.map((r) => (r.id === existingRecommenderReq.id ? { ...r, num_recommenders } : r)));
@@ -191,7 +266,9 @@ export default function ApplicationDetail({ session }) {
         };
         const { data, error } = await supabase.from('requirements').insert([newReq]).select().single();
         if (error) {
+          toast.error('Failed to add recommenders requirement');
           console.error(error);
+          setButtonLoading((prev) => ({ ...prev, addRequirement: false }));
           return;
         }
         setRequirements([...requirements, data]);
@@ -212,7 +289,9 @@ export default function ApplicationDetail({ session }) {
       };
       const { data, error } = await supabase.from('requirements').insert([newReq]).select().single();
       if (error) {
+        toast.error('Failed to add requirement');
         console.error(error);
+        setButtonLoading((prev) => ({ ...prev, addRequirement: false }));
         return;
       }
       setRequirements([...requirements, data]);
@@ -232,7 +311,9 @@ export default function ApplicationDetail({ session }) {
       fee_waived: app.fee_waived,
       fee_waiver_details: app.fee_waiver_details,
     });
+    setButtonLoading((prev) => ({ ...prev, addRequirement: false }));
     updateProgress();
+    toast.success('Requirement added');
   };
 
   const updateRequirementField = (reqId, field, value) => {
@@ -243,10 +324,12 @@ export default function ApplicationDetail({ session }) {
   };
 
   const saveRequirementChanges = async () => {
+    setButtonLoading((prev) => ({ ...prev, saveRequirements: true }));
     for (const [reqId, changes] of Object.entries(pendingChanges)) {
       if (Object.keys(changes).length > 0) {
         const { error } = await supabase.from('requirements').update(changes).eq('id', reqId);
         if (error) {
+          toast.error(`Failed to update requirement ${reqId}`);
           console.error(error);
           continue;
         }
@@ -260,30 +343,42 @@ export default function ApplicationDetail({ session }) {
       }
     }
     setPendingChanges({});
+    setButtonLoading((prev) => ({ ...prev, saveRequirements: false }));
+    toast.success('Requirement changes saved');
   };
 
   const deleteRequirement = async (reqId) => {
+    setButtonLoading((prev) => ({ ...prev, [`delete-req-${reqId}`]: true }));
     const req = requirements.find((r) => r.id === reqId);
     if (req.name === 'Recommenders') {
       const { error } = await supabase.from('recommenders').delete().eq('application_id', id);
-      if (error) console.error(error);
-      else setRecommenders([]);
+      if (error) {
+        toast.error('Failed to delete recommenders');
+        console.error(error);
+        setButtonLoading((prev) => ({ ...prev, [`delete-req-${reqId}`]: false }));
+        return;
+      }
+      setRecommenders([]);
     }
     const { error } = await supabase.from('requirements').delete().eq('id', reqId);
-    if (error) console.error(error);
-    else {
+    setButtonLoading((prev) => ({ ...prev, [`delete-req-${reqId}`]: false }));
+    if (error) {
+      toast.error('Failed to delete requirement');
+      console.error(error);
+    } else {
       setRequirements(requirements.filter((r) => r.id !== reqId));
       delete pendingChanges[reqId];
       setPendingChanges({ ...pendingChanges });
       updateProgress();
+      toast.success('Requirement deleted');
     }
   };
 
   const saveRecommender = async () => {
     if (!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status) return;
 
+    setButtonLoading((prev) => ({ ...prev, saveRecommender: true }));
     if (newRecommender.id && !newRecommender.id.startsWith('temp-')) {
-      // Update existing recommender
       const { error } = await supabase.from('recommenders').update({
         name: newRecommender.name,
         email: newRecommender.email,
@@ -291,16 +386,20 @@ export default function ApplicationDetail({ session }) {
         status: newRecommender.status,
       }).eq('id', newRecommender.id);
       if (error) {
+        toast.error('Failed to update recommender');
         console.error(error);
+        setButtonLoading((prev) => ({ ...prev, saveRecommender: false }));
         return;
       }
       setRecommenders(recommenders.map((r) =>
         r.id === newRecommender.id ? { ...r, ...newRecommender } : r
       ));
     } else {
-      // Add new recommender
       const unidentifiedIndex = recommenders.findIndex((r) => r.id === newRecommender.id);
-      if (unidentifiedIndex === -1) return; // No matching row
+      if (unidentifiedIndex === -1) {
+        setButtonLoading((prev) => ({ ...prev, saveRecommender: false }));
+        return;
+      }
       const { data, error } = await supabase.from('recommenders').insert([{
         application_id: id,
         name: newRecommender.name,
@@ -309,7 +408,9 @@ export default function ApplicationDetail({ session }) {
         status: newRecommender.status,
       }]).select().single();
       if (error) {
+        toast.error('Failed to add recommender');
         console.error(error);
+        setButtonLoading((prev) => ({ ...prev, saveRecommender: false }));
         return;
       }
       setRecommenders(recommenders.map((r, index) =>
@@ -317,7 +418,9 @@ export default function ApplicationDetail({ session }) {
       ));
     }
     setNewRecommender(null);
+    setButtonLoading((prev) => ({ ...prev, saveRecommender: false }));
     updateProgress();
+    toast.success('Recommender saved');
   };
 
   const editRecommender = (recommender) => {
@@ -331,10 +434,13 @@ export default function ApplicationDetail({ session }) {
   };
 
   const deleteRecommender = async (recId) => {
+    setButtonLoading((prev) => ({ ...prev, [`delete-rec-${recId}`]: true }));
     if (!recId.startsWith('temp-')) {
       const { error } = await supabase.from('recommenders').delete().eq('id', recId);
       if (error) {
+        toast.error('Failed to delete recommender');
         console.error(error);
+        setButtonLoading((prev) => ({ ...prev, [`delete-rec-${recId}`]: false }));
         return;
       }
     }
@@ -352,7 +458,9 @@ export default function ApplicationDetail({ session }) {
       });
     }
     setRecommenders(updatedRecommenders.slice(0, numRecommenders));
+    setButtonLoading((prev) => ({ ...prev, [`delete-rec-${recId}`]: false }));
     updateProgress();
+    toast.success('Recommender deleted');
   };
 
   const getRequirementDetails = (req) => {
@@ -384,10 +492,17 @@ export default function ApplicationDetail({ session }) {
     'Others',
   ].filter((option) => !requirements.some((req) => req.name === option));
 
+  const completedRequirements = requirements.filter((r) => r.is_completed).length;
+  const totalRequirements = requirements.length;
+  const submittedRecommenders = recommenders.filter((r) => r.status === 'Submitted').length;
+  const recommenderReq = requirements.find((req) => req.name === 'Recommenders');
+  const totalRecommenders = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
+
   if (loading) return <SkeletonDetail />;
 
   return (
     <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
       <nav className="mb-6">
         <Link to="/" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
       </nav>
@@ -483,14 +598,14 @@ export default function ApplicationDetail({ session }) {
             <select
               value={appChanges.status || app.status}
               onChange={(e) => updateAppField('status', e.target.value)}
-              className="ml-2 p-1 border border-gray-300 rounded"
+              className={`ml-2 p-1 border border-gray-300 rounded ${getStatusColor(appChanges.status || app.status, 'application')}`}
             >
-              <option>Planning</option>
-              <option>In Progress</option>
-              <option>Submitted</option>
-              <option>Abandoned</option>
-              <option>Waitlisted</option>
-              <option>Awarded</option>
+              <option value="Planning" className={getStatusColor('Planning', 'application')}>Planning</option>
+              <option value="In Progress" className={getStatusColor('In Progress', 'application')}>In Progress</option>
+              <option value="Submitted" className={getStatusColor('Submitted', 'application')}>Submitted</option>
+              <option value="Abandoned" className={getStatusColor('Abandoned', 'application')}>Abandoned</option>
+              <option value="Waitlisted" className={getStatusColor('Waitlisted', 'application')}>Waitlisted</option>
+              <option value="Awarded" className={getStatusColor('Awarded', 'application')}>Awarded</option>
             </select>
           </div>
           <div className="mb-4">
@@ -512,10 +627,20 @@ export default function ApplicationDetail({ session }) {
           {editMode && (
             <button
               onClick={saveAppChanges}
-              className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
-              disabled={Object.keys(appChanges).length === 0}
+              className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
+              disabled={Object.keys(appChanges).length === 0 || buttonLoading.saveApp}
             >
-              Save Application Changes
+              {buttonLoading.saveApp ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                'Save Application Changes'
+              )}
             </button>
           )}
           <div className="mb-6 mt-4">
@@ -601,15 +726,31 @@ export default function ApplicationDetail({ session }) {
               </li>
             ))}
             {editMode && (
-              <button onClick={addImportantDate} className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm">
-                Add Important Date
+              <button
+                onClick={addImportantDate}
+                className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                disabled={buttonLoading.addDate}
+              >
+                {buttonLoading.addDate ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Adding...
+                  </>
+                ) : (
+                  'Add Important Date'
+                )}
               </button>
             )}
           </ul>
         </div>
       </div>
 
-      <h3 className="text-xl font-bold mb-4 text-neutralDark">Requirements</h3>
+      <h3 className={`text-xl font-bold mb-4 text-neutralDark ${getScoreColor(completedRequirements, totalRequirements)}`}>
+        Requirements ({completedRequirements}/{totalRequirements})
+      </h3>
       <table className="w-full mb-6 border-collapse">
         <thead>
           <tr className="bg-neutralLight">
@@ -631,7 +772,7 @@ export default function ApplicationDetail({ session }) {
                   type="checkbox"
                   checked={req.is_completed}
                   onChange={(e) => toggleRequirement(req.id, e.target.checked)}
-                  disabled={editMode}
+                  disabled={editMode || buttonLoading[`req-${req.id}`]}
                 />
               </td>
               {editMode && (
@@ -780,8 +921,22 @@ export default function ApplicationDetail({ session }) {
                       required
                     />
                   )}
-                  <button onClick={() => deleteRequirement(req.id)} className="text-red-500 ml-2">
-                    Delete
+                  <button
+                    onClick={() => deleteRequirement(req.id)}
+                    className="text-red-500 ml-2 flex items-center"
+                    disabled={buttonLoading[`delete-req-${req.id}`]}
+                  >
+                    {buttonLoading[`delete-req-${req.id}`] ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 mr-2 text-red-500" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
                   </button>
                 </td>
               )}
@@ -954,7 +1109,7 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name && (
                 <button
                   onClick={addRequirement}
-                  className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
+                  className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
                   disabled={
                     !newRequirement.name ||
                     (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
@@ -963,10 +1118,21 @@ export default function ApplicationDetail({ session }) {
                     (newRequirement.name === 'Standardized Test Scores (GRE)' && !newRequirement.min_score) ||
                     (newRequirement.name === 'Application Fee' && !newRequirement.fee_waived && !newRequirement.application_fee) ||
                     (newRequirement.name === 'Application Fee' && newRequirement.fee_waived && !newRequirement.fee_waiver_details) ||
-                    (newRequirement.name === 'Recommenders' && !newRequirement.num_recommenders)
+                    (newRequirement.name === 'Recommenders' && !newRequirement.num_recommenders) ||
+                    buttonLoading.addRequirement
                   }
                 >
-                  Add
+                  {buttonLoading.addRequirement ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Adding...
+                    </>
+                  ) : (
+                    'Add'
+                  )}
                 </button>
               )}
             </div>
@@ -974,16 +1140,29 @@ export default function ApplicationDetail({ session }) {
           {Object.keys(pendingChanges).length > 0 && (
             <button
               onClick={saveRequirementChanges}
-              className="bg-secondary text-white py-1 px-3 rounded text-sm"
+              className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+              disabled={buttonLoading.saveRequirements}
             >
-              Save Requirement Changes
+              {buttonLoading.saveRequirements ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                'Save Requirement Changes'
+              )}
             </button>
           )}
         </>
       )}
       {recommenders.length > 0 && (
         <>
-          <h3 className="text-xl font-bold mb-4 text-neutralDark">References</h3>
+          <h3 className={`text-xl font-bold mb-4 text-neutralDark ${getScoreColor(submittedRecommenders, totalRecommenders)}`}>
+            References ({submittedRecommenders}/{totalRecommenders})
+          </h3>
           <table className="w-full mb-6 border-collapse">
             <thead>
               <tr className="bg-neutralLight">
@@ -1002,15 +1181,63 @@ export default function ApplicationDetail({ session }) {
                   <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.name || '-'}</td>
                   <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.email || '-'}</td>
                   <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.type || '-'}</td>
-                  <td className="p-2">{rec.status}</td>
+                  <td className={`p-2 ${getStatusColor(rec.status, 'recommender')}`}>{rec.status}</td>
                   {!editMode && (
                     <td className="p-2 flex space-x-2">
                       {rec.status === 'Unidentified' ? (
-                        <button onClick={() => editRecommender(rec)} className="text-blue-500">Add</button>
+                        <button
+                          onClick={() => editRecommender(rec)}
+                          className="text-blue-500 hover:underline"
+                          disabled={buttonLoading[`add-rec-${rec.id}`]}
+                        >
+                          {buttonLoading[`add-rec-${rec.id}`] ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5 mr-2 text-blue-500 inline" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              Adding...
+                            </>
+                          ) : (
+                            'Add'
+                          )}
+                        </button>
                       ) : (
                         <>
-                          <button onClick={() => editRecommender(rec)} className="text-blue-500">Edit</button>
-                          <button onClick={() => deleteRecommender(rec.id)} className="text-red-500">Delete</button>
+                          <button
+                            onClick={() => editRecommender(rec)}
+                            className="text-blue-500 hover:underline"
+                            disabled={buttonLoading[`edit-rec-${rec.id}`]}
+                          >
+                            {buttonLoading[`edit-rec-${rec.id}`] ? (
+                              <>
+                                <svg className="animate-spin h-5 w-5 mr-2 text-blue-500 inline" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Editing...
+                              </>
+                            ) : (
+                              'Edit'
+                            )}
+                          </button>
+                          <button
+                            onClick={() => deleteRecommender(rec.id)}
+                            className="text-red-500 hover:underline"
+                            disabled={buttonLoading[`delete-rec-${rec.id}`]}
+                          >
+                            {buttonLoading[`delete-rec-${rec.id}`] ? (
+                              <>
+                                <svg className="animate-spin h-5 w-5 mr-2 text-red-500 inline" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Deleting...
+                              </>
+                            ) : (
+                              'Delete'
+                            )}
+                          </button>
                         </>
                       )}
                     </td>
@@ -1050,20 +1277,30 @@ export default function ApplicationDetail({ session }) {
               <select
                 value={newRecommender.status || 'Identified'}
                 onChange={(e) => setNewRecommender({ ...newRecommender, status: e.target.value })}
-                className="p-1 border border-gray-300 rounded flex-1"
+                className={`p-1 border border-gray-300 rounded flex-1 ${getStatusColor(newRecommender.status || 'Identified', 'recommender')}`}
                 required
               >
-                <option value="Identified">Identified</option>
-                <option>Contacted</option>
-                <option>In Progress</option>
-                <option>Submitted</option>
+                <option value="Identified" className={getStatusColor('Identified', 'recommender')}>Identified</option>
+                <option value="Contacted" className={getStatusColor('Contacted', 'recommender')}>Contacted</option>
+                <option value="In Progress" className={getStatusColor('In Progress', 'recommender')}>In Progress</option>
+                <option value="Submitted" className={getStatusColor('Submitted', 'recommender')}>Submitted</option>
               </select>
               <button
                 onClick={saveRecommender}
-                className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
-                disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status}
+                className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+                disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status || buttonLoading.saveRecommender}
               >
-                Save
+                {buttonLoading.saveRecommender ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
               </button>
             </div>
           )}
