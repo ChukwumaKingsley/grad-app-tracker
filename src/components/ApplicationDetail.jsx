@@ -922,7 +922,8 @@ export default function ApplicationDetail({ session }) {
       <h3 className={`text-xl font-bold mb-4 text-neutralDark ${getScoreColor(completedRequirements, totalRequirements)}`}>
         Requirements ({completedRequirements}/{totalRequirements})
       </h3>
-      <table className="w-full mb-6 border-collapse">
+      <div className="w-full overflow-x-auto mb-6">
+        <table className="w-full border-collapse min-w-[600px]">
         <thead>
           <tr className="bg-neutralLight">
             <th className="p-2 text-left text-neutralDark">S/N</th>
@@ -1114,7 +1115,8 @@ export default function ApplicationDetail({ session }) {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
       {editMode && (
         <>
           <div className="mb-6">
@@ -1339,7 +1341,8 @@ export default function ApplicationDetail({ session }) {
         </h3>
       );
     })()}
-    <table className="w-full mb-6 border-collapse">
+    <div className="w-full overflow-x-auto mb-6">
+      <table className="w-full border-collapse min-w-[600px]">
       <thead>
         <tr className="bg-neutralLight">
           <th className="p-2 text-left text-neutralDark">S/N</th>
@@ -1403,7 +1406,8 @@ export default function ApplicationDetail({ session }) {
           </tr>
         ))}
       </tbody>
-    </table>
+      </table>
+    </div>
     {!editMode && newRecommender && (
       <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 mb-6">
         <input
