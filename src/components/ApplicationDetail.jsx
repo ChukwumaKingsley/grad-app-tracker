@@ -80,17 +80,27 @@ export default function ApplicationDetail({ session }) {
   };
 
   const computeProgress = (requirements, recommenders, editMode) => {
-    const filteredRequirements = editMode ? requirements : requirements.filter((req) => req.name !== 'Recommenders');
-    const completedReqs = filteredRequirements.filter((r) => r.is_completed).length;
-    const totalReqs = filteredRequirements.length;
-    const submittedRecs = recommenders.filter((r) => r.status === 'Submitted').length;
-    const recommenderReq = requirements.find((req) => req.name === 'Recommenders');
-    const totalRecs = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
-    const total = totalReqs + totalRecs;
-    console.log({ completedReqs, totalReqs, submittedRecs, totalRecs, total }); // Debug log
-    if (completedReqs === 0 && submittedRecs === 0) return 0;
-    return total > 0 ? Math.round((completedReqs + submittedRecs) / total * 100) : 0;
+  const filteredRequirements = editMode ? requirements : requirements.filter((req) => req.name !== 'Recommenders');
+  const completedReqs = filteredRequirements.filter((r) => r.is_completed).length;
+  const totalReqs = filteredRequirements.length;
+  
+  // Weighted scoring for recommenders
+  const statusWeights = {
+    Unidentified: 0,
+    Identified: 0.25,
+    Contacted: 0.5,
+    'In Progress': 0.75,
+    Submitted: 1,
   };
+  const recommenderScore = recommenders.reduce((sum, rec) => sum + (statusWeights[rec.status] || 0), 0);
+  const recommenderReq = requirements.find((req) => req.name === 'Recommenders');
+  const totalRecs = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
+  
+  const total = totalReqs + totalRecs;
+  console.log({ completedReqs, totalReqs, recommenderScore, totalRecs, total }); // Debug log
+  if (completedReqs === 0 && recommenderScore === 0) return 0;
+  return total > 0 ? Math.round((completedReqs + recommenderScore) / total * 100) : 0;
+};
 
   const computedProgress = useMemo(() => computeProgress(requirements, recommenders, editMode), [requirements, recommenders, editMode]);
 
@@ -1320,135 +1330,140 @@ export default function ApplicationDetail({ session }) {
         </>
       )}
       {recommenders.length > 0 && (
-        <>
-          <h3 className={`text-xl font-bold mb-4 text-neutralDark ${getScoreColor(submittedRecommenders, totalRecommenders)}`}>
-            References ({submittedRecommenders}/{totalRecommenders})
-          </h3>
-          <table className="w-full mb-6 border-collapse">
-            <thead>
-              <tr className="bg-neutralLight">
-                <th className="p-2 text-left text-neutralDark">S/N</th>
-                <th className="p-2 text-left text-neutralDark">Name</th>
-                <th className="p-2 text-left text-neutralDark">Email</th>
-                <th className="p-2 text-left text-neutralDark">Type</th>
-                <th className="p-2 text-left text-neutralDark">Status</th>
-                {!editMode && <th className="p-2 text-left text-neutralDark">Action</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {recommenders.map((rec, index) => (
-                <tr key={rec.id} className="border-b">
-                  <td className="p-2">{index + 1}</td>
-                  <td className="p-2 overflow-x-auto whitespace-nowrap max-w-[150px]">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.name || '-'}</td>
-                  <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.email || '-'}</td>
-                  <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.type || '-'}</td>
-                  <td className="p-2">
-                    <select
-                      value={rec.status}
-                      onChange={(e) => updateRecommenderStatus(rec.id, e.target.value)}
-                      className={`p-1 border border-gray-300 rounded ${getStatusColor(rec.status, 'recommender')} ${editMode ? 'cursor-not-allowed opacity-50' : ''}`}
-                      disabled={editMode || buttonLoading[`rec-status-${rec.id}`]}
-                    >
-                      <option value="Unidentified" className={getStatusColor('Unidentified', 'recommender')}>Unidentified</option>
-                      <option value="Identified" className={getStatusColor('Identified', 'recommender')}>Identified</option>
-                      <option value="Contacted" className={getStatusColor('Contacted', 'recommender')}>Contacted</option>
-                      <option value="In Progress" className={getStatusColor('In Progress', 'recommender')}>In Progress</option>
-                      <option value="Submitted" className={getStatusColor('Submitted', 'recommender')}>Submitted</option>
-                    </select>
-                  </td>
-                  {!editMode && (
-                    <td className="p-2 flex space-x-2">
-                      {rec.status !== 'Unidentified' && (
-                        <>
-                          <button
-                            onClick={() => editRecommender(rec)}
-                            className="text-blue-500 hover:text-blue-700"
-                            disabled={buttonLoading[`edit-rec-${rec.id}`]}
-                          >
-                            <FaPen />
-                          </button>
-                          <button
-                            onClick={() => deleteRecommender(rec.id)}
-                            className="text-red-500 hover:text-red-700"
-                            disabled={buttonLoading[`delete-rec-${rec.id}`]}
-                          >
-                            {buttonLoading[`delete-rec-${rec.id}`] ? (
-                              <svg className="animate-spin h-5 w-5 text-red-500" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                              </svg>
-                            ) : (
-                              <FaTrash />
-                            )}
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!editMode && newRecommender && (
-            <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 mb-6">
-              <input
-                type="text"
-                value={newRecommender.name || ''}
-                onChange={(e) => setNewRecommender({ ...newRecommender, name: e.target.value })}
-                className="p-1 border border-gray-300 rounded flex-1"
-                placeholder="Enter name"
-                required
-              />
-              <input
-                type="email"
-                value={newRecommender.email || ''}
-                onChange={(e) => setNewRecommender({ ...newRecommender, email: e.target.value })}
-                className="p-1 border border-gray-300 rounded flex-1"
-                placeholder="Enter email"
-                required
-              />
+  <>
+    {(() => {
+      const recommenderScore = recommenders.reduce((sum, rec) => sum + ({ Unidentified: 0, Identified: 0.25, Contacted: 0.5, 'In Progress': 0.75, Submitted: 1 }[rec.status] || 0), 0);
+      return (
+        <h3 className={`text-xl font-bold mb-4 text-neutralDark ${getScoreColor(recommenderScore, totalRecommenders)}`}>
+          References ({Math.floor(recommenderScore) === recommenderScore ? Math.floor(recommenderScore) : recommenderScore.toFixed(2)}/{totalRecommenders})
+        </h3>
+      );
+    })()}
+    <table className="w-full mb-6 border-collapse">
+      <thead>
+        <tr className="bg-neutralLight">
+          <th className="p-2 text-left text-neutralDark">S/N</th>
+          <th className="p-2 text-left text-neutralDark">Name</th>
+          <th className="p-2 text-left text-neutralDark">Email</th>
+          <th className="p-2 text-left text-neutralDark">Type</th>
+          <th className="p-2 text-left text-neutralDark">Status</th>
+          {!editMode && <th className="p-2 text-left text-neutralDark">Action</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {recommenders.map((rec, index) => (
+          <tr key={rec.id} className="border-b">
+            <td className="p-2">{index + 1}</td>
+            <td className="p-2 overflow-x-auto whitespace-nowrap max-w-[150px]">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.name || '-'}</td>
+            <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.email || '-'}</td>
+            <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.type || '-'}</td>
+            <td className="p-2">
               <select
-                value={newRecommender.type || ''}
-                onChange={(e) => setNewRecommender({ ...newRecommender, type: e.target.value })}
-                className="p-1 border border-gray-300 rounded flex-1"
-                required
+                value={rec.status}
+                onChange={(e) => updateRecommenderStatus(rec.id, e.target.value)}
+                className={`p-1 border border-gray-300 rounded ${getStatusColor(rec.status, 'recommender')} ${editMode ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={editMode || buttonLoading[`rec-status-${rec.id}`]}
               >
-                <option value="">Select Type</option>
-                <option>Academic</option>
-                <option>Professional</option>
-              </select>
-              <select
-                value={newRecommender.status || 'Identified'}
-                onChange={(e) => setNewRecommender({ ...newRecommender, status: e.target.value })}
-                className={`p-1 border border-gray-300 rounded flex-1 ${getStatusColor(newRecommender.status || 'Identified', 'recommender')}`}
-                required
-              >
+                <option value="Unidentified" className={getStatusColor('Unidentified', 'recommender')}>Unidentified</option>
                 <option value="Identified" className={getStatusColor('Identified', 'recommender')}>Identified</option>
                 <option value="Contacted" className={getStatusColor('Contacted', 'recommender')}>Contacted</option>
                 <option value="In Progress" className={getStatusColor('In Progress', 'recommender')}>In Progress</option>
                 <option value="Submitted" className={getStatusColor('Submitted', 'recommender')}>Submitted</option>
               </select>
-              <button
-                onClick={saveRecommender}
-                className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
-                disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status || buttonLoading.saveRecommender}
-              >
-                {buttonLoading.saveRecommender ? (
+            </td>
+            {!editMode && (
+              <td className="p-2 flex space-x-2">
+                {rec.status !== 'Unidentified' && (
                   <>
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Saving...
+                    <button
+                      onClick={() => editRecommender(rec)}
+                      className="text-blue-500 hover:text-blue-700"
+                      disabled={buttonLoading[`edit-rec-${rec.id}`]}
+                    >
+                      <FaPen />
+                    </button>
+                    <button
+                      onClick={() => deleteRecommender(rec.id)}
+                      className="text-red-500 hover:text-red-700"
+                      disabled={buttonLoading[`delete-rec-${rec.id}`]}
+                    >
+                      {buttonLoading[`delete-rec-${rec.id}`] ? (
+                        <svg className="animate-spin h-5 w-5 text-red-500" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      ) : (
+                        <FaTrash />
+                      )}
+                    </button>
                   </>
-                ) : (
-                  'Save'
                 )}
-              </button>
-            </div>
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    {!editMode && newRecommender && (
+      <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 mb-6">
+        <input
+          type="text"
+          value={newRecommender.name || ''}
+          onChange={(e) => setNewRecommender({ ...newRecommender, name: e.target.value })}
+          className="p-1 border border-gray-300 rounded flex-1"
+          placeholder="Enter name"
+          required
+        />
+        <input
+          type="email"
+          value={newRecommender.email || ''}
+          onChange={(e) => setNewRecommender({ ...newRecommender, email: e.target.value })}
+          className="p-1 border border-gray-300 rounded flex-1"
+          placeholder="Enter email"
+          required
+        />
+        <select
+          value={newRecommender.type || ''}
+          onChange={(e) => setNewRecommender({ ...newRecommender, type: e.target.value })}
+          className="p-1 border border-gray-300 rounded flex-1"
+          required
+        >
+          <option value="">Select Type</option>
+          <option>Academic</option>
+          <option>Professional</option>
+        </select>
+        <select
+          value={newRecommender.status || 'Identified'}
+          onChange={(e) => setNewRecommender({ ...newRecommender, status: e.target.value })}
+          className={`p-1 border border-gray-300 rounded flex-1 ${getStatusColor(newRecommender.status || 'Identified', 'recommender')}`}
+          required
+        >
+          <option value="Identified" className={getScoreColor('Identified', 'recommender')}>Identified</option>
+          <option value="Contacted" className={getScoreColor('Contacted', 'recommender')}>Contacted</option>
+          <option value="In Progress" className={getScoreColor('In Progress', 'recommender')}>In Progress</option>
+          <option value="Submitted" className={getScoreColor('Submitted', 'recommender')}>Submitted</option>
+        </select>
+        <button
+          onClick={saveRecommender}
+          className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+          disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status || buttonLoading.saveRecommender}
+        >
+          {buttonLoading.saveRecommender ? (
+            <>
+              <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Saving...
+            </>
+          ) : (
+            'Save'
           )}
-        </>
-      )}
+        </button>
+      </div>
+    )}
+  </>
+)}
     </div>
   );
 }
