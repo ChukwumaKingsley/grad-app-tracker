@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 
 export default function ApplicationDetail({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [app, setApp] = useState(null);
-  const [deadlines, setDeadlines] = useState([]);
+  const [importantDates, setImportantDates] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [recommenders, setRecommenders] = useState([]);
   const [editMode, setEditMode] = useState(false);
@@ -25,8 +25,8 @@ export default function ApplicationDetail({ session }) {
     }
     setApp(appData);
 
-    const { data: dlData } = await supabase.from('deadlines').select('*').eq('application_id', id).order('date');
-    setDeadlines(dlData || []);
+    const { data: dateData } = await supabase.from('important_dates').select('*').eq('application_id', id).order('date');
+    setImportantDates(dateData || []);
 
     const { data: reqData } = await supabase.from('requirements').select('*').eq('application_id', id);
     setRequirements(reqData || []);
@@ -72,17 +72,17 @@ export default function ApplicationDetail({ session }) {
     else setApp({ ...app, [field]: value });
   };
 
-  const addDeadline = async () => {
-    const newDl = { application_id: id, name: 'New Deadline', date: new Date().toISOString().split('T')[0] };
-    const { data, error } = await supabase.from('deadlines').insert([newDl]).select().single();
+  const addImportantDate = async () => {
+    const newDate = { application_id: id, name: 'New Date', date: new Date().toISOString().split('T')[0] };
+    const { data, error } = await supabase.from('important_dates').insert([newDate]).select().single();
     if (error) console.error(error);
-    else setDeadlines([...deadlines, data]);
+    else setImportantDates([...importantDates, data]);
   };
 
-  const updateDeadline = async (dlId, field, value) => {
-    const { error } = await supabase.from('deadlines').update({ [field]: value }).eq('id', dlId);
+  const updateImportantDate = async (dateId, field, value) => {
+    const { error } = await supabase.from('important_dates').update({ [field]: value }).eq('id', dateId);
     if (error) console.error(error);
-    else setDeadlines(deadlines.map((d) => (d.id === dlId ? { ...d, [field]: value } : d)));
+    else setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
   };
 
   const addRequirement = async (name, criteria_type = null, criteria_value = null, min_score = null) => {
@@ -111,16 +111,6 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  const addRecommender = async () => {
-    const newRec = { application_id: id, name: 'Recommender', status: 'Unidentified', type: null, email: null };
-    const { data, error } = await supabase.from('recommenders').insert([newRec]).select().single();
-    if (error) console.error(error);
-    else {
-      setRecommenders([...recommenders, data]);
-      updateProgress();
-    }
-  };
-
   const deleteRecommender = async (recId) => {
     const { error } = await supabase.from('recommenders').delete().eq('id', recId);
     if (error) console.error(error);
@@ -134,6 +124,9 @@ export default function ApplicationDetail({ session }) {
 
   return (
     <div className="bg-white p-8 rounded-lg shadow-md">
+      <nav className="mb-6">
+        <Link to="/" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
+      </nav>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-primary">{app.program}</h2>
         <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded">
@@ -142,9 +135,14 @@ export default function ApplicationDetail({ session }) {
       </div>
       <p className="text-neutralDark mb-4">{app.country} - {app.level}</p>
       <div className="mb-4">
-        <span className="font-medium text-neutralDark">Status:</span>
+        <label htmlFor="app-status" className="font-medium text-neutralDark">Status:</label>
         {editMode ? (
-          <select value={app.status} onChange={(e) => updateAppField('status', e.target.value)} className="ml-2 p-1 border border-gray-300 rounded">
+          <select
+            id="app-status"
+            value={app.status}
+            onChange={(e) => updateAppField('status', e.target.value)}
+            className="ml-2 p-1 border border-gray-300 rounded"
+          >
             <option>Planning</option>
             <option>In Progress</option>
             <option>Submitted</option>
@@ -157,9 +155,14 @@ export default function ApplicationDetail({ session }) {
         )}
       </div>
       <div className="mb-4">
-        <span className="font-medium text-neutralDark">Funding:</span>
+        <label htmlFor="funding-status" className="font-medium text-neutralDark">Funding:</label>
         {editMode ? (
-          <select value={app.funding_status} onChange={(e) => updateAppField('funding_status', e.target.value)} className="ml-2 p-1 border border-gray-300 rounded">
+          <select
+            id="funding-status"
+            value={app.funding_status}
+            onChange={(e) => updateAppField('funding_status', e.target.value)}
+            className="ml-2 p-1 border border-gray-300 rounded"
+          >
             <option>None</option>
             <option>Partial</option>
             <option>Full</option>
@@ -175,33 +178,37 @@ export default function ApplicationDetail({ session }) {
         <p className="text-neutralDark">{app.progress}% Complete</p>
       </div>
 
-      <h3 className="text-2xl font-bold mb-4 text-neutralDark">Deadlines</h3>
+      <h3 className="text-2xl font-bold mb-4 text-neutralDark">Important Dates</h3>
       <ul className="mb-6">
-        {deadlines.map((dl) => (
-          <li key={dl.id} className="mb-2">
+        {importantDates.map((date) => (
+          <li key={date.id} className="mb-2">
             {editMode ? (
               <>
+                <label htmlFor={`date-name-${date.id}`} className="block text-neutralDark mb-1">Date Name</label>
                 <input
+                  id={`date-name-${date.id}`}
                   type="text"
-                  value={dl.name}
-                  onChange={(e) => updateDeadline(dl.id, 'name', e.target.value)}
-                  className="p-1 border border-gray-300 rounded mr-2"
+                  value={date.name}
+                  onChange={(e) => updateImportantDate(date.id, 'name', e.target.value)}
+                  className="p-1 border border-gray-300 rounded mr-2 w-full"
                 />
+                <label htmlFor={`date-date-${date.id}`} className="block text-neutralDark mb-1 mt-2">Date</label>
                 <input
+                  id={`date-date-${date.id}`}
                   type="date"
-                  value={dl.date}
-                  onChange={(e) => updateDeadline(dl.id, 'date', e.target.value)}
-                  className="p-1 border border-gray-300 rounded"
+                  value={date.date}
+                  onChange={(e) => updateImportantDate(date.id, 'date', e.target.value)}
+                  className="p-1 border border-gray-300 rounded w-full"
                 />
               </>
             ) : (
-              `${dl.name}: ${dl.date}`
+              `${date.name}: ${date.date}`
             )}
           </li>
         ))}
         {editMode && (
-          <button onClick={addDeadline} className="bg-secondary text-white py-1 px-3 rounded mt-2">
-            Add Deadline
+          <button onClick={addImportantDate} className="bg-secondary text-white py-1 px-3 rounded mt-2">
+            Add Important Date
           </button>
         )}
       </ul>
@@ -226,7 +233,9 @@ export default function ApplicationDetail({ session }) {
               <div className="ml-auto flex items-center">
                 {['Writing Sample', 'Personal Statement', 'Statement of Purpose/Motivation Letter'].includes(req.name) && (
                   <>
+                    <label htmlFor={`req-criteria-${req.id}`} className="text-neutralDark mr-2">Criteria Type</label>
                     <select
+                      id={`req-criteria-${req.id}`}
                       value={req.criteria_type || ''}
                       onChange={(e) => updateRequirement(req.id, 'criteria_type', e.target.value || null)}
                       className="p-1 border border-gray-300 rounded mr-2"
@@ -235,7 +244,9 @@ export default function ApplicationDetail({ session }) {
                       <option>Words</option>
                       <option>Pages</option>
                     </select>
+                    <label htmlFor={`req-value-${req.id}`} className="text-neutralDark mr-2">Criteria Value</label>
                     <input
+                      id={`req-value-${req.id}`}
                       type="number"
                       value={req.criteria_value || ''}
                       onChange={(e) => updateRequirement(req.id, 'criteria_value', e.target.value ? parseInt(e.target.value) : null)}
@@ -245,13 +256,17 @@ export default function ApplicationDetail({ session }) {
                   </>
                 )}
                 {['GRE', 'TOEFL/IELTS'].includes(req.name) && (
-                  <input
-                    type="number"
-                    value={req.min_score || ''}
-                    onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value ? parseInt(e.target.value) : null)}
-                    className="p-1 border border-gray-300 rounded mr-2"
-                    placeholder="Min Score"
-                  />
+                  <>
+                    <label htmlFor={`req-min-score-${req.id}`} className="text-neutralDark mr-2">Minimum Score</label>
+                    <input
+                      id={`req-min-score-${req.id}`}
+                      type="number"
+                      value={req.min_score || ''}
+                      onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value ? parseInt(e.target.value) : null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="Min Score"
+                    />
+                  </>
                 )}
                 <button onClick={() => deleteRequirement(req.id)} className="text-red-500">
                   Delete
@@ -262,10 +277,13 @@ export default function ApplicationDetail({ session }) {
         ))}
         {editMode && (
           <div className="mt-4">
-            <input type="text" id="newReq" placeholder="New Requirement" className="p-1 border border-gray-300 rounded mr-2" />
-            <button onClick={() => addRequirement(document.getElementById('newReq').value)} className="bg-secondary text-white py-1 px-3 rounded">
-              Add
-            </button>
+            <label htmlFor="new-req" className="block text-neutralDark mb-1">New Requirement</label>
+            <div className="flex">
+              <input id="new-req" type="text" placeholder="Enter requirement" className="p-1 border border-gray-300 rounded mr-2 flex-1" />
+              <button onClick={() => addRequirement(document.getElementById('new-req').value)} className="bg-secondary text-white py-1 px-3 rounded">
+                Add
+              </button>
+            </div>
           </div>
         )}
       </ul>
@@ -285,60 +303,55 @@ export default function ApplicationDetail({ session }) {
           {recommenders.map((rec) => (
             <tr key={rec.id} className="border-b">
               <td className="p-2">
-                {rec.status !== 'Unidentified' && !editMode ? (
-                  <input
-                    type="text"
-                    value={rec.name}
-                    onChange={(e) => updateRecommender(rec.id, 'name', e.target.value)}
-                    className="p-1 border border-gray-300 rounded w-full"
-                  />
-                ) : (
-                  <span>{rec.name}</span>
-                )}
+                <label htmlFor={`rec-name-${rec.id}`} className="block text-neutralDark mb-1">Recommender Name</label>
+                <input
+                  id={`rec-name-${rec.id}`}
+                  type="text"
+                  value={rec.name}
+                  onChange={(e) => updateRecommender(rec.id, 'name', e.target.value)}
+                  disabled={rec.status === 'Unidentified' || editMode}
+                  className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
+                />
               </td>
               <td className="p-2">
-                {rec.status !== 'Unidentified' && !editMode ? (
-                  <select
-                    value={rec.type || ''}
-                    onChange={(e) => updateRecommender(rec.id, 'type', e.target.value || null)}
-                    className="p-1 border border-gray-300 rounded w-full"
-                  >
-                    <option value="">Select Type</option>
-                    <option>Academic</option>
-                    <option>Professional</option>
-                  </select>
-                ) : (
-                  <span>{rec.type || 'N/A'}</span>
-                )}
+                <label htmlFor={`rec-type-${rec.id}`} className="block text-neutralDark mb-1">Recommender Type</label>
+                <select
+                  id={`rec-type-${rec.id}`}
+                  value={rec.type || ''}
+                  onChange={(e) => updateRecommender(rec.id, 'type', e.target.value || null)}
+                  disabled={rec.status === 'Unidentified' || editMode}
+                  className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
+                >
+                  <option value="">Select Type</option>
+                  <option>Academic</option>
+                  <option>Professional</option>
+                </select>
               </td>
               <td className="p-2">
-                {rec.status !== 'Unidentified' && !editMode ? (
-                  <input
-                    type="email"
-                    value={rec.email || ''}
-                    onChange={(e) => updateRecommender(rec.id, 'email', e.target.value || null)}
-                    className="p-1 border border-gray-300 rounded w-full"
-                  />
-                ) : (
-                  <span>{rec.email || 'N/A'}</span>
-                )}
+                <label htmlFor={`rec-email-${rec.id}`} className="block text-neutralDark mb-1">Email</label>
+                <input
+                  id={`rec-email-${rec.id}`}
+                  type="email"
+                  value={rec.email || ''}
+                  onChange={(e) => updateRecommender(rec.id, 'email', e.target.value || null)}
+                  disabled={rec.status === 'Unidentified' || editMode}
+                  className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
+                />
               </td>
               <td className="p-2">
-                {!editMode ? (
-                  <select
-                    value={rec.status}
-                    onChange={(e) => updateRecommender(rec.id, 'status', e.target.value)}
-                    className="p-1 border border-gray-300 rounded w-full"
-                  >
-                    <option>Unidentified</option>
-                    <option>Identified</option>
-                    <option>Contacted</option>
-                    <option>In Progress</option>
-                    <option>Submitted</option>
-                  </select>
-                ) : (
-                  <span>{rec.status}</span>
-                )}
+                <label htmlFor={`rec-status-${rec.id}`} className="block text-neutralDark mb-1">Status</label>
+                <select
+                  id={`rec-status-${rec.id}`}
+                  value={rec.status}
+                  onChange={(e) => updateRecommender(rec.id, 'status', e.target.value)}
+                  className="p-1 border border-gray-300 rounded w-full"
+                >
+                  <option>Unidentified</option>
+                  <option>Identified</option>
+                  <option>Contacted</option>
+                  <option>In Progress</option>
+                  <option>Submitted</option>
+                </select>
               </td>
               {editMode && (
                 <td className="p-2">
@@ -351,21 +364,18 @@ export default function ApplicationDetail({ session }) {
           ))}
         </tbody>
       </table>
-      {!editMode && (
-        <button onClick={addRecommender} className="bg-secondary text-white py-1 px-3 rounded mt-2">
-          Add Recommender
-        </button>
-      )}
 
       <h3 className="text-2xl font-bold mb-4 text-neutralDark">Links</h3>
       <div className="mb-4">
-        <span className="font-medium text-neutralDark">Program Link:</span>
+        <label htmlFor="program-link" className="font-medium text-neutralDark">Program Link:</label>
         {editMode ? (
           <input
+            id="program-link"
             type="url"
             value={app.program_link || ''}
             onChange={(e) => updateAppField('program_link', e.target.value)}
             className="ml-2 p-1 border border-gray-300 rounded w-1/2"
+            placeholder="e.g., https://university.edu/program"
           />
         ) : (
           <a href={app.program_link} target="_blank" rel="noopener noreferrer" className="ml-2 text-secondary hover:underline">
@@ -374,13 +384,15 @@ export default function ApplicationDetail({ session }) {
         )}
       </div>
       <div>
-        <span className="font-medium text-neutralDark">Portal Link:</span>
+        <label htmlFor="portal-link" className="font-medium text-neutralDark">Portal Link:</label>
         {editMode ? (
           <input
+            id="portal-link"
             type="url"
             value={app.portal_link || ''}
             onChange={(e) => updateAppField('portal_link', e.target.value)}
             className="ml-2 p-1 border border-gray-300 rounded w-1/2"
+            placeholder="e.g., https://apply.university.edu"
           />
         ) : (
           <a href={app.portal_link} target="_blank" rel="noopener noreferrer" className="ml-2 text-secondary hover:underline">

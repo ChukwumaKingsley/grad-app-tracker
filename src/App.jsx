@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './components/Dashboard.jsx';
 import AddApplication from './components/AddApplication.jsx';
 import ApplicationDetail from './components/ApplicationDetail.jsx';
-// We'll create this next
+import './index.css';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -33,7 +33,9 @@ export default function App() {
     <div className="min-h-screen bg-neutralLight">
       <header className="bg-primary text-white p-4">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Grad App Tracker</h1>
+          <Link to="/" className="text-2xl font-bold hover:text-secondary">
+            Grad App Tracker
+          </Link>
           <button onClick={() => supabase.auth.signOut()} className="bg-secondary hover:bg-blue-700 text-white py-2 px-4 rounded">
             Sign Out
           </button>
@@ -44,7 +46,6 @@ export default function App() {
           <Route path="/" element={<Dashboard session={session} />} />
           <Route path="/add" element={<AddApplication session={session} />} />
           <Route path="/application/:id" element={<ApplicationDetail session={session} />} />
-          {/* Add more routes later */}
         </Routes>
       </main>
     </div>
