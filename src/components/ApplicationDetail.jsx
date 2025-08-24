@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SkeletonDetail } from './SkeletonLoader';
+import { FaPen, FaTrash } from 'react-icons/fa';
 
 export default function ApplicationDetail({ session }) {
   const { id } = useParams();
@@ -14,7 +15,7 @@ export default function ApplicationDetail({ session }) {
   const [recommenders, setRecommenders] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [buttonLoading, setButtonLoading] = useState({}); // Track loading state for each button
+  const [buttonLoading, setButtonLoading] = useState({});
   const [newRequirement, setNewRequirement] = useState({
     name: '',
     criteria_type: null,
@@ -32,6 +33,8 @@ export default function ApplicationDetail({ session }) {
   const [newRecommender, setNewRecommender] = useState(null);
   const [pendingChanges, setPendingChanges] = useState({});
   const [appChanges, setAppChanges] = useState({});
+  const [pendingDateChanges, setPendingDateChanges] = useState({});
+  const [editingDateId, setEditingDateId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -163,16 +166,45 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  const updateImportantDate = async (dateId, field, value) => {
-    setButtonLoading((prev) => ({ ...prev, [`date-${dateId}-${field}`]: true }));
-    const { error } = await supabase.from('important_dates').update({ [field]: value }).eq('id', dateId);
-    setButtonLoading((prev) => ({ ...prev, [`date-${dateId}-${field}`]: false }));
+  const updateDateField = (dateId, field, value) => {
+    setPendingDateChanges({
+      ...pendingDateChanges,
+      [dateId]: { ...pendingDateChanges[dateId], [field]: value },
+    });
+  };
+
+  const saveDateChanges = async () => {
+    setButtonLoading((prev) => ({ ...prev, saveDates: true }));
+    for (const [dateId, changes] of Object.entries(pendingDateChanges)) {
+      if (Object.keys(changes).length > 0) {
+        const { error } = await supabase.from('important_dates').update(changes).eq('id', dateId);
+        if (error) {
+          toast.error(`Failed to update date ${dateId}`);
+          console.error(error);
+          continue;
+        }
+        setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, ...changes } : d)));
+      }
+    }
+    setPendingDateChanges({});
+    setEditingDateId(null);
+    setButtonLoading((prev) => ({ ...prev, saveDates: false }));
+    toast.success('Date changes saved');
+  };
+
+  const deleteImportantDate = async (dateId) => {
+    setButtonLoading((prev) => ({ ...prev, [`delete-date-${dateId}`]: true }));
+    const { error } = await supabase.from('important_dates').delete().eq('id', dateId);
+    setButtonLoading((prev) => ({ ...prev, [`delete-date-${dateId}`]: false }));
     if (error) {
-      toast.error('Failed to update important date');
+      toast.error('Failed to delete important date');
       console.error(error);
     } else {
-      setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
-      toast.success('Important date updated');
+      setImportantDates(importantDates.filter((d) => d.id !== dateId));
+      delete pendingDateChanges[dateId];
+      setPendingDateChanges({ ...pendingDateChanges });
+      if (editingDateId === dateId) setEditingDateId(null);
+      toast.success('Important date deleted');
     }
   };
 
@@ -223,6 +255,46 @@ export default function ApplicationDetail({ session }) {
     setRecommenders(paddedRecommenders.slice(0, newCount));
     setButtonLoading((prev) => ({ ...prev, adjustRecommenders: false }));
     updateProgress();
+  };
+
+  const updateRecommenderStatus = async (recId, newStatus) => {
+    setButtonLoading((prev) => ({ ...prev, [`rec-status-${recId}`]: true }));
+    let updatedRecommender;
+    if (recId.startsWith('temp-')) {
+      const index = recommenders.findIndex((r) => r.id === recId);
+      if (index === -1) {
+        setButtonLoading((prev) => ({ ...prev, [`rec-status-${recId}`]: false }));
+        return;
+      }
+      const { data, error } = await supabase.from('recommenders').insert([{
+        application_id: id,
+        name: recommenders[index].name || 'Unknown',
+        email: recommenders[index].email || 'unknown@example.com',
+        type: recommenders[index].type || 'Academic',
+        status: newStatus,
+      }]).select().single();
+      if (error) {
+        toast.error('Failed to update recommender status');
+        console.error(error);
+        setButtonLoading((prev) => ({ ...prev, [`rec-status-${recId}`]: false }));
+        return;
+      }
+      updatedRecommender = data;
+      setRecommenders(recommenders.map((r, i) => (i === index ? data : r)));
+    } else {
+      const { data, error } = await supabase.from('recommenders').update({ status: newStatus }).eq('id', recId).select().single();
+      if (error) {
+        toast.error('Failed to update recommender status');
+        console.error(error);
+        setButtonLoading((prev) => ({ ...prev, [`rec-status-${recId}`]: false }));
+        return;
+      }
+      updatedRecommender = data;
+      setRecommenders(recommenders.map((r) => (r.id === recId ? data : r)));
+    }
+    setButtonLoading((prev) => ({ ...prev, [`rec-status-${recId}`]: false }));
+    updateProgress();
+    toast.success('Recommender status updated');
   };
 
   const addRequirement = async () => {
@@ -375,7 +447,7 @@ export default function ApplicationDetail({ session }) {
   };
 
   const saveRecommender = async () => {
-    if (!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status) return;
+    if (!newRecommender?.name || !newRecommender?.email || !newRecommender?.type || !newRecommender?.status) return;
 
     setButtonLoading((prev) => ({ ...prev, saveRecommender: true }));
     if (newRecommender.id && !newRecommender.id.startsWith('temp-')) {
@@ -702,47 +774,99 @@ export default function ApplicationDetail({ session }) {
           <h3 className="text-xl font-bold mb-4 text-neutralDark">Important Dates</h3>
           <ul className="mb-6">
             {importantDates.map((date) => (
-              <li key={date.id} className="mb-2">
-                {editMode ? (
+              <li key={date.id} className="mb-2 flex items-center space-x-2">
+                {editMode && editingDateId === date.id ? (
                   <>
-                    <label className="block text-neutralDark mb-1">Date Name</label>
                     <input
                       type="text"
-                      value={date.name}
-                      onChange={(e) => updateImportantDate(date.id, 'name', e.target.value)}
-                      className="p-1 border border-gray-300 rounded w-full mb-2"
+                      value={pendingDateChanges[date.id]?.name || date.name}
+                      onChange={(e) => updateDateField(date.id, 'name', e.target.value)}
+                      className="p-1 border border-gray-300 rounded flex-1"
                     />
-                    <label className="block text-neutralDark mb-1">Date</label>
                     <input
                       type="date"
-                      value={date.date}
-                      onChange={(e) => updateImportantDate(date.id, 'date', e.target.value)}
-                      className="p-1 border border-gray-300 rounded w-full"
+                      value={pendingDateChanges[date.id]?.date || date.date}
+                      onChange={(e) => updateDateField(date.id, 'date', e.target.value)}
+                      className="p-1 border border-gray-300 rounded flex-1"
                     />
+                    <button
+                      onClick={() => setEditingDateId(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
                   </>
                 ) : (
-                  `${date.name}: ${date.date}`
+                  <>
+                    <span>{date.name}: {date.date}</span>
+                    {editMode && (
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setEditingDateId(date.id)}
+                          className="text-blue-500 hover:text-blue-700"
+                          disabled={buttonLoading[`edit-date-${date.id}`]}
+                        >
+                          <FaPen />
+                        </button>
+                        <button
+                          onClick={() => deleteImportantDate(date.id)}
+                          className="text-red-500 hover:text-red-700"
+                          disabled={buttonLoading[`delete-date-${date.id}`]}
+                        >
+                          {buttonLoading[`delete-date-${date.id}`] ? (
+                            <svg className="animate-spin h-5 w-5 text-red-500" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                          ) : (
+                            <FaTrash />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </li>
             ))}
             {editMode && (
-              <button
-                onClick={addImportantDate}
-                className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
-                disabled={buttonLoading.addDate}
-              >
-                {buttonLoading.addDate ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Adding...
-                  </>
-                ) : (
-                  'Add Important Date'
+              <>
+                <button
+                  onClick={addImportantDate}
+                  className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                  disabled={buttonLoading.addDate}
+                >
+                  {buttonLoading.addDate ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Important Date'
+                  )}
+                </button>
+                {Object.keys(pendingDateChanges).length > 0 && (
+                  <button
+                    onClick={saveDateChanges}
+                    className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                    disabled={buttonLoading.saveDates}
+                  >
+                    {buttonLoading.saveDates ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Date Changes'
+                    )}
+                  </button>
                 )}
-              </button>
+              </>
             )}
           </ul>
         </div>
@@ -1178,64 +1302,46 @@ export default function ApplicationDetail({ session }) {
               {recommenders.map((rec, index) => (
                 <tr key={rec.id} className="border-b">
                   <td className="p-2">{index + 1}</td>
-                  <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.name || '-'}</td>
+                  <td className="p-2 overflow-x-auto whitespace-nowrap max-w-[150px]">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.name || '-'}</td>
                   <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.email || '-'}</td>
                   <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.type || '-'}</td>
-                  <td className={`p-2 ${getStatusColor(rec.status, 'recommender')}`}>{rec.status}</td>
+                  <td className="p-2">
+                    <select
+                      value={rec.status}
+                      onChange={(e) => updateRecommenderStatus(rec.id, e.target.value)}
+                      className={`p-1 border border-gray-300 rounded ${getStatusColor(rec.status, 'recommender')} ${editMode ? 'cursor-not-allowed opacity-50' : ''}`}
+                      disabled={editMode || buttonLoading[`rec-status-${rec.id}`]}
+                    >
+                      <option value="Unidentified" className={getStatusColor('Unidentified', 'recommender')}>Unidentified</option>
+                      <option value="Identified" className={getStatusColor('Identified', 'recommender')}>Identified</option>
+                      <option value="Contacted" className={getStatusColor('Contacted', 'recommender')}>Contacted</option>
+                      <option value="In Progress" className={getStatusColor('In Progress', 'recommender')}>In Progress</option>
+                      <option value="Submitted" className={getStatusColor('Submitted', 'recommender')}>Submitted</option>
+                    </select>
+                  </td>
                   {!editMode && (
                     <td className="p-2 flex space-x-2">
-                      {rec.status === 'Unidentified' ? (
-                        <button
-                          onClick={() => editRecommender(rec)}
-                          className="text-blue-500 hover:underline"
-                          disabled={buttonLoading[`add-rec-${rec.id}`]}
-                        >
-                          {buttonLoading[`add-rec-${rec.id}`] ? (
-                            <>
-                              <svg className="animate-spin h-5 w-5 mr-2 text-blue-500 inline" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                              </svg>
-                              Adding...
-                            </>
-                          ) : (
-                            'Add'
-                          )}
-                        </button>
-                      ) : (
+                      {rec.status !== 'Unidentified' && (
                         <>
                           <button
                             onClick={() => editRecommender(rec)}
-                            className="text-blue-500 hover:underline"
+                            className="text-blue-500 hover:text-blue-700"
                             disabled={buttonLoading[`edit-rec-${rec.id}`]}
                           >
-                            {buttonLoading[`edit-rec-${rec.id}`] ? (
-                              <>
-                                <svg className="animate-spin h-5 w-5 mr-2 text-blue-500 inline" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                Editing...
-                              </>
-                            ) : (
-                              'Edit'
-                            )}
+                            <FaPen />
                           </button>
                           <button
                             onClick={() => deleteRecommender(rec.id)}
-                            className="text-red-500 hover:underline"
+                            className="text-red-500 hover:text-red-700"
                             disabled={buttonLoading[`delete-rec-${rec.id}`]}
                           >
                             {buttonLoading[`delete-rec-${rec.id}`] ? (
-                              <>
-                                <svg className="animate-spin h-5 w-5 mr-2 text-red-500 inline" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                Deleting...
-                              </>
+                              <svg className="animate-spin h-5 w-5 text-red-500" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
                             ) : (
-                              'Delete'
+                              <FaTrash />
                             )}
                           </button>
                         </>
