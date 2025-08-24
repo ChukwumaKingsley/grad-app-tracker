@@ -10,6 +10,9 @@ export default function AddApplication({ session }) {
     country: null,
     level: 'Masters',
     program: '',
+    application_fee: '0',
+    fee_waived: false,
+    fee_waiver_details: '',
     important_dates: [],
     program_link: '',
     portal_link: '',
@@ -20,7 +23,6 @@ export default function AddApplication({ session }) {
   const [numRecommenders, setNumRecommenders] = useState(0);
   const [recommenderTypes, setRecommenderTypes] = useState('');
   const [requirements, setRequirements] = useState({
-    'Application Fee': { selected: false, cost: '' },
     'Transcripts': { selected: false, type: '' },
     'Degree Certificate': { selected: false },
     'GPA/Class of Degree': { selected: false, conversion: '' },
@@ -37,9 +39,15 @@ export default function AddApplication({ session }) {
     'Cover Letter': { selected: false },
     'Application Form': { selected: false },
   });
-  const [errors, setErrors] = useState({ country: '', level: '', program: '' });
+  const [errors, setErrors] = useState({
+    country: '',
+    level: '',
+    program: '',
+    application_fee: '',
+    fee_waiver_details: '',
+    requirements: {},
+  });
 
-  // List of countries (ISO 3166-1 alpha-2)
   const countries = [
     { value: 'AF', label: 'Afghanistan' },
     { value: 'AL', label: 'Albania' },
@@ -256,7 +264,6 @@ export default function AddApplication({ session }) {
       [reqName]: {
         ...requirements[reqName],
         selected: !requirements[reqName].selected,
-        cost: requirements[reqName].selected ? '' : requirements[reqName].cost,
         type: requirements[reqName].selected ? '' : requirements[reqName].type,
         conversion: requirements[reqName].selected ? '' : requirements[reqName].conversion,
         details: requirements[reqName].selected ? '' : requirements[reqName].details,
@@ -267,6 +274,7 @@ export default function AddApplication({ session }) {
         char_count: requirements[reqName].selected ? '' : requirements[reqName].char_count,
       },
     });
+    setErrors({ ...errors, requirements: { ...errors.requirements, [reqName]: {} } });
   };
 
   const updateRequirementField = (reqName, field, value) => {
@@ -274,6 +282,12 @@ export default function AddApplication({ session }) {
       ...requirements,
       [reqName]: { ...requirements[reqName], [field]: value },
     });
+    if (errors.requirements[reqName]?.[field]) {
+      setErrors({
+        ...errors,
+        requirements: { ...errors.requirements, [reqName]: { ...errors.requirements[reqName], [field]: '' } },
+      });
+    }
   };
 
   const validateStep1 = () => {
@@ -281,8 +295,34 @@ export default function AddApplication({ session }) {
     if (!formData.country) newErrors.country = 'Country is required';
     if (!formData.level) newErrors.level = 'Program Level is required';
     if (!formData.program.trim()) newErrors.program = 'Program Name is required';
-    setErrors(newErrors);
+    if (!formData.application_fee && !formData.fee_waived) newErrors.application_fee = 'Application Fee is required';
+    if (formData.fee_waived && !formData.fee_waiver_details.trim()) newErrors.fee_waiver_details = 'Waiver details are required';
+    setErrors({ ...errors, ...newErrors });
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep3 = () => {
+    const reqErrors = {};
+    Object.entries(requirements).forEach(([reqName, req]) => {
+      if (req.selected) {
+        const errors = {};
+        if (reqName === 'Transcripts' && !req.type) errors.type = 'Transcript type is required';
+        if (reqName === 'GPA/Class of Degree' && !req.conversion.trim()) errors.conversion = 'Conversion details are required';
+        if (reqName === 'Standardized Test Scores (GRE)' && !req.details.trim()) errors.details = 'Test requirements are required';
+        if (reqName === 'English Proficiency Test Scores' && !req.waived && !req.test_type) errors.test_type = 'Test type is required';
+        if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(reqName)) {
+          if (!req.criteria_type) errors.criteria_type = 'Criteria type is required';
+          if (!req.criteria_value) errors.criteria_value = 'Criteria value is required';
+        }
+        if (reqName === 'Credential Evaluation' && !req.details.trim()) errors.details = 'Evaluation details are required';
+        if (Object.keys(errors).length > 0) reqErrors[reqName] = errors;
+      }
+    });
+    if (requiresRecommenders && numRecommenders < 1) {
+      reqErrors['Letters of Recommendation'] = { numRecommenders: 'At least one recommender is required' };
+    }
+    setErrors({ ...errors, requirements: reqErrors });
+    return Object.keys(reqErrors).length === 0;
   };
 
   const handleSubmit = async () => {
@@ -290,12 +330,16 @@ export default function AddApplication({ session }) {
       setStep(1);
       return;
     }
+    if (step === 3 && !validateStep3()) return;
 
     const appData = {
       user_id: session.user.id,
       country: formData.country ? formData.country.label : '',
       level: formData.level,
       program: formData.program,
+      application_fee: formData.application_fee,
+      fee_waived: formData.fee_waived,
+      fee_waiver_details: formData.fee_waived ? formData.fee_waiver_details : null,
       status: formData.status,
       funding_status: formData.funding_status,
       progress: 0,
@@ -329,11 +373,11 @@ export default function AddApplication({ session }) {
         criteria_type: req.criteria_type || null,
         criteria_value: req.criteria_value ? parseInt(req.criteria_value) : null,
         char_count: req.char_count ? parseInt(req.char_count) : null,
-        min_score: req.details ? req.details : null, // For GRE or Credential Evaluation details
+        min_score: req.details || null,
         test_type: req.test_type || null,
         waived: req.waived || false,
-        cost: req.cost || null,
         conversion: req.conversion || null,
+        type: req.type || null,
       }));
 
     if (selectedRequirements.length > 0) {
@@ -357,6 +401,7 @@ export default function AddApplication({ session }) {
 
   const nextStep = () => {
     if (step === 1 && !validateStep1()) return;
+    if (step === 3 && !validateStep3()) return;
     setStep(step + 1);
   };
 
@@ -413,6 +458,45 @@ export default function AddApplication({ session }) {
               />
               {errors.program && <p className="text-red-500 text-sm mt-1">{errors.program}</p>}
             </div>
+            <div className="mb-4">
+              <label htmlFor="application-fee" className="block text-neutralDark mb-1">
+                Application Fee <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="application-fee"
+                type="text"
+                placeholder="e.g., $100 or 0"
+                value={formData.application_fee}
+                onChange={(e) => updateFormData('application_fee', e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded"
+                disabled={formData.fee_waived}
+              />
+              {errors.application_fee && <p className="text-red-500 text-sm mt-1">{errors.application_fee}</p>}
+              <label className="block mt-2">
+                <input
+                  type="checkbox"
+                  checked={formData.fee_waived}
+                  onChange={() => updateFormData('fee_waived', !formData.fee_waived)}
+                />{' '}
+                Fee Waived
+              </label>
+              {formData.fee_waived && (
+                <div className="mt-2">
+                  <label htmlFor="fee-waiver-details" className="block text-neutralDark mb-1">
+                    Waiver Details <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="fee-waiver-details"
+                    type="text"
+                    placeholder="e.g., Financial hardship waiver"
+                    value={formData.fee_waiver_details}
+                    onChange={(e) => updateFormData('fee_waiver_details', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  />
+                  {errors.fee_waiver_details && <p className="text-red-500 text-sm mt-1">{errors.fee_waiver_details}</p>}
+                </div>
+              )}
+            </div>
           </div>
         );
       case 2:
@@ -465,22 +549,11 @@ export default function AddApplication({ session }) {
                 </label>
                 {requirements[reqName].selected && (
                   <div className="ml-6">
-                    {reqName === 'Application Fee' && (
-                      <div className="mb-2">
-                        <label htmlFor={`${reqName}-cost`} className="block text-neutralDark mb-1">Cost</label>
-                        <input
-                          id={`${reqName}-cost`}
-                          type="text"
-                          placeholder="e.g., $100"
-                          value={requirements[reqName].cost}
-                          onChange={(e) => updateRequirementField(reqName, 'cost', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded"
-                        />
-                      </div>
-                    )}
                     {reqName === 'Transcripts' && (
                       <div className="mb-2">
-                        <label htmlFor={`${reqName}-type`} className="block text-neutralDark mb-1">Transcript Type</label>
+                        <label htmlFor={`${reqName}-type`} className="block text-neutralDark mb-1">
+                          Transcript Type <span className="text-red-500">*</span>
+                        </label>
                         <select
                           id={`${reqName}-type`}
                           value={requirements[reqName].type}
@@ -492,11 +565,16 @@ export default function AddApplication({ session }) {
                           <option>Unofficial</option>
                           <option>Evaluated</option>
                         </select>
+                        {errors.requirements[reqName]?.type && (
+                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].type}</p>
+                        )}
                       </div>
                     )}
                     {reqName === 'GPA/Class of Degree' && (
                       <div className="mb-2">
-                        <label htmlFor={`${reqName}-conversion`} className="block text-neutralDark mb-1">Conversion Details (if required)</label>
+                        <label htmlFor={`${reqName}-conversion`} className="block text-neutralDark mb-1">
+                          Conversion Details <span className="text-red-500">*</span>
+                        </label>
                         <input
                           id={`${reqName}-conversion`}
                           type="text"
@@ -505,11 +583,16 @@ export default function AddApplication({ session }) {
                           onChange={(e) => updateRequirementField(reqName, 'conversion', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded"
                         />
+                        {errors.requirements[reqName]?.conversion && (
+                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].conversion}</p>
+                        )}
                       </div>
                     )}
                     {reqName === 'Standardized Test Scores (GRE)' && (
                       <div className="mb-2">
-                        <label htmlFor={`${reqName}-details`} className="block text-neutralDark mb-1">Test Requirements</label>
+                        <label htmlFor={`${reqName}-details`} className="block text-neutralDark mb-1">
+                          Test Requirements <span className="text-red-500">*</span>
+                        </label>
                         <input
                           id={`${reqName}-details`}
                           type="text"
@@ -518,6 +601,9 @@ export default function AddApplication({ session }) {
                           onChange={(e) => updateRequirementField(reqName, 'details', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded"
                         />
+                        {errors.requirements[reqName]?.details && (
+                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].details}</p>
+                        )}
                       </div>
                     )}
                     {reqName === 'English Proficiency Test Scores' && (
@@ -532,7 +618,9 @@ export default function AddApplication({ session }) {
                         </label>
                         {!requirements[reqName].waived && (
                           <div>
-                            <label htmlFor={`${reqName}-test-type`} className="block text-neutralDark mb-1">Test Type</label>
+                            <label htmlFor={`${reqName}-test-type`} className="block text-neutralDark mb-1">
+                              Test Type <span className="text-red-500">*</span>
+                            </label>
                             <select
                               id={`${reqName}-test-type`}
                               value={requirements[reqName].test_type}
@@ -545,13 +633,18 @@ export default function AddApplication({ session }) {
                               <option>Duolingo</option>
                               <option>Letter from School</option>
                             </select>
+                            {errors.requirements[reqName]?.test_type && (
+                              <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].test_type}</p>
+                            )}
                           </div>
                         )}
                       </div>
                     )}
                     {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(reqName) && (
                       <div className="mb-2">
-                        <label htmlFor={`${reqName}-criteria`} className="block text-neutralDark mb-1">Criteria Type</label>
+                        <label htmlFor={`${reqName}-criteria`} className="block text-neutralDark mb-1">
+                          Criteria Type <span className="text-red-500">*</span>
+                        </label>
                         <select
                           id={`${reqName}-criteria`}
                           value={requirements[reqName].criteria_type}
@@ -563,7 +656,12 @@ export default function AddApplication({ session }) {
                           <option>Pages</option>
                           <option>Characters</option>
                         </select>
-                        <label htmlFor={`${reqName}-value`} className="block text-neutralDark mb-1">Criteria Value</label>
+                        {errors.requirements[reqName]?.criteria_type && (
+                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].criteria_type}</p>
+                        )}
+                        <label htmlFor={`${reqName}-value`} className="block text-neutralDark mb-1">
+                          Criteria Value <span className="text-red-500">*</span>
+                        </label>
                         <input
                           id={`${reqName}-value`}
                           type="number"
@@ -572,6 +670,9 @@ export default function AddApplication({ session }) {
                           onChange={(e) => updateRequirementField(reqName, 'criteria_value', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded mb-2"
                         />
+                        {errors.requirements[reqName]?.criteria_value && (
+                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].criteria_value}</p>
+                        )}
                         <label htmlFor={`${reqName}-char-count`} className="block text-neutralDark mb-1">Character Count</label>
                         <input
                           id={`${reqName}-char-count`}
@@ -585,7 +686,9 @@ export default function AddApplication({ session }) {
                     )}
                     {reqName === 'Credential Evaluation' && (
                       <div className="mb-2">
-                        <label htmlFor={`${reqName}-details`} className="block text-neutralDark mb-1">Evaluation Details</label>
+                        <label htmlFor={`${reqName}-details`} className="block text-neutralDark mb-1">
+                          Evaluation Details <span className="text-red-500">*</span>
+                        </label>
                         <input
                           id={`${reqName}-details`}
                           type="text"
@@ -594,6 +697,9 @@ export default function AddApplication({ session }) {
                           onChange={(e) => updateRequirementField(reqName, 'details', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded"
                         />
+                        {errors.requirements[reqName]?.details && (
+                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].details}</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -610,6 +716,10 @@ export default function AddApplication({ session }) {
                     setNumRecommenders(0);
                     setRecommenderTypes('');
                   }
+                  setErrors({
+                    ...errors,
+                    requirements: { ...errors.requirements, 'Letters of Recommendation': {} },
+                  });
                 }}
               />{' '}
               Letters of Recommendation
@@ -617,16 +727,32 @@ export default function AddApplication({ session }) {
             {requiresRecommenders && (
               <div className="ml-6">
                 <div className="mb-4">
-                  <label htmlFor="num-recommenders" className="block text-neutralDark mb-1">Number of Recommenders</label>
+                  <label htmlFor="num-recommenders" className="block text-neutralDark mb-1">
+                    Number of Recommenders <span className="text-red-500">*</span>
+                  </label>
                   <input
                     id="num-recommenders"
                     type="number"
-                    min="0"
+                    min="1"
                     value={numRecommenders}
-                    onChange={(e) => setNumRecommenders(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      setNumRecommenders(parseInt(e.target.value) || 0);
+                      if (errors.requirements['Letters of Recommendation']?.numRecommenders) {
+                        setErrors({
+                          ...errors,
+                          requirements: {
+                            ...errors.requirements,
+                            'Letters of Recommendation': { ...errors.requirements['Letters of Recommendation'], numRecommenders: '' },
+                          },
+                        });
+                      }
+                    }}
                     placeholder="e.g., 2"
                     className="w-full p-2 border border-gray-300 rounded"
                   />
+                  {errors.requirements['Letters of Recommendation']?.numRecommenders && (
+                    <p className="text-red-500 text-sm mt-1">{errors.requirements['Letters of Recommendation'].numRecommenders}</p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="recommender-types" className="block text-neutralDark mb-1">Recommender Types</label>

@@ -86,9 +86,9 @@ export default function ApplicationDetail({ session }) {
     else setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
   };
 
-  const addRequirement = async (name, criteria_type = null, criteria_value = null, char_count = null, min_score = null, test_type = null, waived = false, cost = null, conversion = null) => {
+  const addRequirement = async (name, criteria_type = null, criteria_value = null, char_count = null, min_score = null, test_type = null, waived = false, conversion = null, type = null) => {
     if (!name) return;
-    const newReq = { application_id: id, name, is_completed: false, criteria_type, criteria_value, char_count, min_score, test_type, waived, cost, conversion };
+    const newReq = { application_id: id, name, is_completed: false, criteria_type, criteria_value, char_count, min_score, test_type, waived, conversion, type };
     const { data, error } = await supabase.from('requirements').insert([newReq]).select().single();
     if (error) console.error(error);
     else {
@@ -131,10 +131,51 @@ export default function ApplicationDetail({ session }) {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-primary">{app.program}</h2>
         <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded">
-          {editMode ? 'Update Mode' : 'Edit Mode'}
+          {editMode ? 'View Mode' : 'Edit Mode'}
         </button>
       </div>
       <p className="text-neutralDark mb-4">{app.country} - {app.level}</p>
+      <div className="mb-4">
+        <label htmlFor="application-fee" className="font-medium text-neutralDark">Application Fee:</label>
+        {editMode ? (
+          <>
+            <input
+              id="application-fee"
+              type="text"
+              value={app.application_fee}
+              onChange={(e) => updateAppField('application_fee', e.target.value)}
+              className="ml-2 p-1 border border-gray-300 rounded w-1/4"
+              placeholder="e.g., $100 or 0"
+              disabled={app.fee_waived}
+            />
+            <label className="block mt-2">
+              <input
+                type="checkbox"
+                checked={app.fee_waived}
+                onChange={() => updateAppField('fee_waived', !app.fee_waived)}
+              />{' '}
+              Fee Waived
+            </label>
+            {app.fee_waived && (
+              <div className="mt-2">
+                <label htmlFor="fee-waiver-details" className="block text-neutralDark mb-1">Waiver Details</label>
+                <input
+                  id="fee-waiver-details"
+                  type="text"
+                  value={app.fee_waiver_details || ''}
+                  onChange={(e) => updateAppField('fee_waiver_details', e.target.value)}
+                  className="ml-2 p-1 border border-gray-300 rounded w-1/2"
+                  placeholder="e.g., Financial hardship waiver"
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="ml-2">
+            {app.fee_waived ? `Waived (${app.fee_waiver_details})` : app.application_fee}
+          </span>
+        )}
+      </div>
       <div className="mb-4">
         <label htmlFor="app-status" className="font-medium text-neutralDark">Status:</label>
         {editMode ? (
@@ -230,10 +271,10 @@ export default function ApplicationDetail({ session }) {
               {req.criteria_type && req.criteria_value ? ` (${req.criteria_value} ${req.criteria_type})` : ''}
               {req.char_count ? ` (${req.char_count} characters)` : ''}
               {req.test_type ? ` (${req.test_type}${req.waived ? ', Waived' : ''})` : req.waived ? ' (Waived)' : ''}
-              {req.cost ? ` (Cost: ${req.cost})` : ''}
               {req.conversion ? ` (Conversion: ${req.conversion})` : ''}
               {req.min_score && req.name === 'Standardized Test Scores (GRE)' ? ` (${req.min_score})` : ''}
               {req.min_score && req.name === 'Credential Evaluation' ? ` (${req.min_score})` : ''}
+              {req.type ? ` (${req.type})` : ''}
             </span>
             {editMode && (
               <div className="ml-auto flex items-center">
@@ -342,19 +383,6 @@ export default function ApplicationDetail({ session }) {
                     )}
                   </>
                 )}
-                {req.name === 'Application Fee' && (
-                  <>
-                    <label htmlFor={`req-cost-${req.id}`} className="text-neutralDark mr-2">Cost</label>
-                    <input
-                      id={`req-cost-${req.id}`}
-                      type="text"
-                      value={req.cost || ''}
-                      onChange={(e) => updateRequirement(req.id, 'cost', e.target.value || null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
-                      placeholder="e.g., $100"
-                    />
-                  </>
-                )}
                 {req.name === 'Credential Evaluation' && (
                   <>
                     <label htmlFor={`req-details-${req.id}`} className="text-neutralDark mr-2">Evaluation Details</label>
@@ -409,7 +437,7 @@ export default function ApplicationDetail({ session }) {
                   type="text"
                   value={rec.name}
                   onChange={(e) => updateRecommender(rec.id, 'name', e.target.value)}
-                  disabled={rec.status === 'Unidentified' || editMode}
+                  disabled={rec.status === 'Unidentified' || !editMode}
                   className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
                 />
               </td>
@@ -419,7 +447,7 @@ export default function ApplicationDetail({ session }) {
                   id={`rec-type-${rec.id}`}
                   value={rec.type || ''}
                   onChange={(e) => updateRecommender(rec.id, 'type', e.target.value || null)}
-                  disabled={rec.status === 'Unidentified' || editMode}
+                  disabled={rec.status === 'Unidentified' || !editMode}
                   className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
                 >
                   <option value="">Select Type</option>
@@ -434,7 +462,7 @@ export default function ApplicationDetail({ session }) {
                   type="email"
                   value={rec.email || ''}
                   onChange={(e) => updateRecommender(rec.id, 'email', e.target.value || null)}
-                  disabled={rec.status === 'Unidentified' || editMode}
+                  disabled={rec.status === 'Unidentified' || !editMode}
                   className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
                 />
               </td>
