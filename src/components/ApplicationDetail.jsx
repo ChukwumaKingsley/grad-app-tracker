@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { SkeletonDetail } from './SkeletonLoader';
 
 export default function ApplicationDetail({ session }) {
   const { id } = useParams();
@@ -85,9 +86,9 @@ export default function ApplicationDetail({ session }) {
     else setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
   };
 
-  const addRequirement = async (name, criteria_type = null, criteria_value = null, min_score = null) => {
+  const addRequirement = async (name, criteria_type = null, criteria_value = null, char_count = null, min_score = null, test_type = null, waived = false, cost = null, conversion = null) => {
     if (!name) return;
-    const newReq = { application_id: id, name, is_completed: false, criteria_type, criteria_value, min_score };
+    const newReq = { application_id: id, name, is_completed: false, criteria_type, criteria_value, char_count, min_score, test_type, waived, cost, conversion };
     const { data, error } = await supabase.from('requirements').insert([newReq]).select().single();
     if (error) console.error(error);
     else {
@@ -120,7 +121,7 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  if (loading) return <div className="text-center text-neutralDark">Loading...</div>;
+  if (loading) return <SkeletonDetail />;
 
   return (
     <div className="bg-white p-8 rounded-lg shadow-md">
@@ -227,11 +228,16 @@ export default function ApplicationDetail({ session }) {
             <span className="ml-2">
               {req.name}
               {req.criteria_type && req.criteria_value ? ` (${req.criteria_value} ${req.criteria_type})` : ''}
-              {req.min_score ? ` (Min Score: ${req.min_score})` : ''}
+              {req.char_count ? ` (${req.char_count} characters)` : ''}
+              {req.test_type ? ` (${req.test_type}${req.waived ? ', Waived' : ''})` : req.waived ? ' (Waived)' : ''}
+              {req.cost ? ` (Cost: ${req.cost})` : ''}
+              {req.conversion ? ` (Conversion: ${req.conversion})` : ''}
+              {req.min_score && req.name === 'Standardized Test Scores (GRE)' ? ` (${req.min_score})` : ''}
+              {req.min_score && req.name === 'Credential Evaluation' ? ` (${req.min_score})` : ''}
             </span>
             {editMode && (
               <div className="ml-auto flex items-center">
-                {['Writing Sample', 'Personal Statement', 'Statement of Purpose/Motivation Letter'].includes(req.name) && (
+                {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(req.name) && (
                   <>
                     <label htmlFor={`req-criteria-${req.id}`} className="text-neutralDark mr-2">Criteria Type</label>
                     <select
@@ -243,6 +249,7 @@ export default function ApplicationDetail({ session }) {
                       <option value="">Select Criteria</option>
                       <option>Words</option>
                       <option>Pages</option>
+                      <option>Characters</option>
                     </select>
                     <label htmlFor={`req-value-${req.id}`} className="text-neutralDark mr-2">Criteria Value</label>
                     <input
@@ -253,18 +260,111 @@ export default function ApplicationDetail({ session }) {
                       className="p-1 border border-gray-300 rounded mr-2"
                       placeholder="Value"
                     />
+                    <label htmlFor={`req-char-count-${req.id}`} className="text-neutralDark mr-2">Character Count</label>
+                    <input
+                      id={`req-char-count-${req.id}`}
+                      type="number"
+                      value={req.char_count || ''}
+                      onChange={(e) => updateRequirement(req.id, 'char_count', e.target.value ? parseInt(e.target.value) : null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="Char Count"
+                    />
                   </>
                 )}
-                {['GRE', 'TOEFL/IELTS'].includes(req.name) && (
+                {req.name === 'Transcripts' && (
                   <>
-                    <label htmlFor={`req-min-score-${req.id}`} className="text-neutralDark mr-2">Minimum Score</label>
-                    <input
-                      id={`req-min-score-${req.id}`}
-                      type="number"
-                      value={req.min_score || ''}
-                      onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value ? parseInt(e.target.value) : null)}
+                    <label htmlFor={`req-type-${req.id}`} className="text-neutralDark mr-2">Transcript Type</label>
+                    <select
+                      id={`req-type-${req.id}`}
+                      value={req.type || ''}
+                      onChange={(e) => updateRequirement(req.id, 'type', e.target.value || null)}
                       className="p-1 border border-gray-300 rounded mr-2"
-                      placeholder="Min Score"
+                    >
+                      <option value="">Select Type</option>
+                      <option>Official</option>
+                      <option>Unofficial</option>
+                      <option>Evaluated</option>
+                    </select>
+                  </>
+                )}
+                {req.name === 'GPA/Class of Degree' && (
+                  <>
+                    <label htmlFor={`req-conversion-${req.id}`} className="text-neutralDark mr-2">Conversion Details</label>
+                    <input
+                      id={`req-conversion-${req.id}`}
+                      type="text"
+                      value={req.conversion || ''}
+                      onChange={(e) => updateRequirement(req.id, 'conversion', e.target.value || null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="e.g., 3.5/4.0"
+                    />
+                  </>
+                )}
+                {req.name === 'Standardized Test Scores (GRE)' && (
+                  <>
+                    <label htmlFor={`req-details-${req.id}`} className="text-neutralDark mr-2">Test Requirements</label>
+                    <input
+                      id={`req-details-${req.id}`}
+                      type="text"
+                      value={req.min_score || ''}
+                      onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value || null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="e.g., 160 Verbal, 160 Quantitative"
+                    />
+                  </>
+                )}
+                {req.name === 'English Proficiency Test Scores' && (
+                  <>
+                    <label className="text-neutralDark mr-2">
+                      <input
+                        type="checkbox"
+                        checked={req.waived || false}
+                        onChange={(e) => updateRequirement(req.id, 'waived', e.target.checked)}
+                      />{' '}
+                      Waived
+                    </label>
+                    {!req.waived && (
+                      <>
+                        <label htmlFor={`req-test-type-${req.id}`} className="text-neutralDark mr-2">Test Type</label>
+                        <select
+                          id={`req-test-type-${req.id}`}
+                          value={req.test_type || ''}
+                          onChange={(e) => updateRequirement(req.id, 'test_type', e.target.value || null)}
+                          className="p-1 border border-gray-300 rounded mr-2"
+                        >
+                          <option value="">Select Test</option>
+                          <option>TOEFL</option>
+                          <option>IELTS</option>
+                          <option>Duolingo</option>
+                          <option>Letter from School</option>
+                        </select>
+                      </>
+                    )}
+                  </>
+                )}
+                {req.name === 'Application Fee' && (
+                  <>
+                    <label htmlFor={`req-cost-${req.id}`} className="text-neutralDark mr-2">Cost</label>
+                    <input
+                      id={`req-cost-${req.id}`}
+                      type="text"
+                      value={req.cost || ''}
+                      onChange={(e) => updateRequirement(req.id, 'cost', e.target.value || null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="e.g., $100"
+                    />
+                  </>
+                )}
+                {req.name === 'Credential Evaluation' && (
+                  <>
+                    <label htmlFor={`req-details-${req.id}`} className="text-neutralDark mr-2">Evaluation Details</label>
+                    <input
+                      id={`req-details-${req.id}`}
+                      type="text"
+                      value={req.min_score || ''}
+                      onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value || null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="e.g., WES Evaluation"
                     />
                   </>
                 )}

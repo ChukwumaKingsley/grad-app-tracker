@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link } from 'react-router-dom';
+import { SkeletonCard } from './SkeletonLoader';
 
 export default function Dashboard({ session }) {
   const [applications, setApplications] = useState([]);
@@ -45,7 +46,21 @@ export default function Dashboard({ session }) {
     setLoading(false);
   };
 
-  if (loading) return <div className="text-center text-neutralDark">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex justify-between items-center mb-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-24 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array(3).fill(0).map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
