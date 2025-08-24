@@ -14,6 +14,6 @@ export default {
         accent: '#10B981', // Emerald Green
       },
     },
-  },
+  },  
   plugins: [],
 }
