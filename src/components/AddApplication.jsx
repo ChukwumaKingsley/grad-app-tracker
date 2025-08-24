@@ -1,862 +1,409 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import Select from 'react-select';
 
 export default function AddApplication({ session }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    country: null,
-    level: 'Masters',
     program: '',
-    application_fee: '0',
+    country: '',
+    level: 'Masters',
+    application_fee: '',
     fee_waived: false,
     fee_waiver_details: '',
-    important_dates: [],
+    funding_status: 'None',
     program_link: '',
     portal_link: '',
-    status: 'Planning',
-    funding_status: 'None',
-  });
-  const [requiresRecommenders, setRequiresRecommenders] = useState(false);
-  const [numRecommenders, setNumRecommenders] = useState(0);
-  const [recommenderTypes, setRecommenderTypes] = useState('');
-  const [requirements, setRequirements] = useState({
-    'Transcripts': { selected: false, type: '' },
-    'Degree Certificate': { selected: false },
-    'GPA/Class of Degree': { selected: false, conversion: '' },
-    'Standardized Test Scores (GRE)': { selected: false, details: '' },
-    'English Proficiency Test Scores': { selected: false, test_type: '', waived: false },
-    'CV or Résumé': { selected: false },
-    'Passport or ID': { selected: false },
-    'Statement of Purpose': { selected: false, criteria_type: '', criteria_value: '', char_count: '' },
-    'Research Proposal': { selected: false, criteria_type: '', criteria_value: '', char_count: '' },
-    'Writing Samples': { selected: false, criteria_type: '', criteria_value: '', char_count: '' },
-    'Portfolio': { selected: false },
-    'Supervisor Acceptance': { selected: false },
-    'Credential Evaluation': { selected: false, details: '' },
-    'Cover Letter': { selected: false },
-    'Application Form': { selected: false },
-  });
-  const [errors, setErrors] = useState({
-    country: '',
-    level: '',
-    program: '',
-    application_fee: '',
-    fee_waiver_details: '',
-    requirements: {},
+    num_recommenders: '',
+    requirements: [],
   });
 
-  const countries = [
-    { value: 'AF', label: 'Afghanistan' },
-    { value: 'AL', label: 'Albania' },
-    { value: 'DZ', label: 'Algeria' },
-    { value: 'AD', label: 'Andorra' },
-    { value: 'AO', label: 'Angola' },
-    { value: 'AG', label: 'Antigua and Barbuda' },
-    { value: 'AR', label: 'Argentina' },
-    { value: 'AM', label: 'Armenia' },
-    { value: 'AU', label: 'Australia' },
-    { value: 'AT', label: 'Austria' },
-    { value: 'AZ', label: 'Azerbaijan' },
-    { value: 'BS', label: 'Bahamas' },
-    { value: 'BH', label: 'Bahrain' },
-    { value: 'BD', label: 'Bangladesh' },
-    { value: 'BB', label: 'Barbados' },
-    { value: 'BY', label: 'Belarus' },
-    { value: 'BE', label: 'Belgium' },
-    { value: 'BZ', label: 'Belize' },
-    { value: 'BJ', label: 'Benin' },
-    { value: 'BT', label: 'Bhutan' },
-    { value: 'BO', label: 'Bolivia' },
-    { value: 'BA', label: 'Bosnia and Herzegovina' },
-    { value: 'BW', label: 'Botswana' },
-    { value: 'BR', label: 'Brazil' },
-    { value: 'BN', label: 'Brunei' },
-    { value: 'BG', label: 'Bulgaria' },
-    { value: 'BF', label: 'Burkina Faso' },
-    { value: 'BI', label: 'Burundi' },
-    { value: 'CV', label: 'Cabo Verde' },
-    { value: 'KH', label: 'Cambodia' },
-    { value: 'CM', label: 'Cameroon' },
-    { value: 'CA', label: 'Canada' },
-    { value: 'CF', label: 'Central African Republic' },
-    { value: 'TD', label: 'Chad' },
-    { value: 'CL', label: 'Chile' },
-    { value: 'CN', label: 'China' },
-    { value: 'CO', label: 'Colombia' },
-    { value: 'KM', label: 'Comoros' },
-    { value: 'CG', label: 'Congo' },
-    { value: 'CR', label: 'Costa Rica' },
-    { value: 'HR', label: 'Croatia' },
-    { value: 'CU', label: 'Cuba' },
-    { value: 'CY', label: 'Cyprus' },
-    { value: 'CZ', label: 'Czech Republic' },
-    { value: 'CD', label: 'DR Congo' },
-    { value: 'DK', label: 'Denmark' },
-    { value: 'DJ', label: 'Djibouti' },
-    { value: 'DM', label: 'Dominica' },
-    { value: 'DO', label: 'Dominican Republic' },
-    { value: 'EC', label: 'Ecuador' },
-    { value: 'EG', label: 'Egypt' },
-    { value: 'SV', label: 'El Salvador' },
-    { value: 'GQ', label: 'Equatorial Guinea' },
-    { value: 'ER', label: 'Eritrea' },
-    { value: 'EE', label: 'Estonia' },
-    { value: 'SZ', label: 'Eswatini' },
-    { value: 'ET', label: 'Ethiopia' },
-    { value: 'FJ', label: 'Fiji' },
-    { value: 'FI', label: 'Finland' },
-    { value: 'FR', label: 'France' },
-    { value: 'GA', label: 'Gabon' },
-    { value: 'GM', label: 'Gambia' },
-    { value: 'GE', label: 'Georgia' },
-    { value: 'DE', label: 'Germany' },
-    { value: 'GH', label: 'Ghana' },
-    { value: 'GR', label: 'Greece' },
-    { value: 'GD', label: 'Grenada' },
-    { value: 'GT', label: 'Guatemala' },
-    { value: 'GN', label: 'Guinea' },
-    { value: 'GW', label: 'Guinea-Bissau' },
-    { value: 'GY', label: 'Guyana' },
-    { value: 'HT', label: 'Haiti' },
-    { value: 'HN', label: 'Honduras' },
-    { value: 'HU', label: 'Hungary' },
-    { value: 'IS', label: 'Iceland' },
-    { value: 'IN', label: 'India' },
-    { value: 'ID', label: 'Indonesia' },
-    { value: 'IR', label: 'Iran' },
-    { value: 'IQ', label: 'Iraq' },
-    { value: 'IE', label: 'Ireland' },
-    { value: 'IL', label: 'Israel' },
-    { value: 'IT', label: 'Italy' },
-    { value: 'JM', label: 'Jamaica' },
-    { value: 'JP', label: 'Japan' },
-    { value: 'JO', label: 'Jordan' },
-    { value: 'KZ', label: 'Kazakhstan' },
-    { value: 'KE', label: 'Kenya' },
-    { value: 'KI', label: 'Kiribati' },
-    { value: 'KP', label: 'North Korea' },
-    { value: 'KR', label: 'South Korea' },
-    { value: 'KW', label: 'Kuwait' },
-    { value: 'KG', label: 'Kyrgyzstan' },
-    { value: 'LA', label: 'Laos' },
-    { value: 'LV', label: 'Latvia' },
-    { value: 'LB', label: 'Lebanon' },
-    { value: 'LS', label: 'Lesotho' },
-    { value: 'LR', label: 'Liberia' },
-    { value: 'LY', label: 'Libya' },
-    { value: 'LI', label: 'Liechtenstein' },
-    { value: 'LT', label: 'Lithuania' },
-    { value: 'LU', label: 'Luxembourg' },
-    { value: 'MG', label: 'Madagascar' },
-    { value: 'MW', label: 'Malawi' },
-    { value: 'MY', label: 'Malaysia' },
-    { value: 'MV', label: 'Maldives' },
-    { value: 'ML', label: 'Mali' },
-    { value: 'MT', label: 'Malta' },
-    { value: 'MH', label: 'Marshall Islands' },
-    { value: 'MR', label: 'Mauritania' },
-    { value: 'MU', label: 'Mauritius' },
-    { value: 'MX', label: 'Mexico' },
-    { value: 'FM', label: 'Micronesia' },
-    { value: 'MD', label: 'Moldova' },
-    { value: 'MC', label: 'Monaco' },
-    { value: 'MN', label: 'Mongolia' },
-    { value: 'ME', label: 'Montenegro' },
-    { value: 'MA', label: 'Morocco' },
-    { value: 'MZ', label: 'Mozambique' },
-    { value: 'MM', label: 'Myanmar' },
-    { value: 'NA', label: 'Namibia' },
-    { value: 'NR', label: 'Nauru' },
-    { value: 'NP', label: 'Nepal' },
-    { value: 'NL', label: 'Netherlands' },
-    { value: 'NZ', label: 'New Zealand' },
-    { value: 'NI', label: 'Nicaragua' },
-    { value: 'NE', label: 'Niger' },
-    { value: 'NG', label: 'Nigeria' },
-    { value: 'MK', label: 'North Macedonia' },
-    { value: 'NO', label: 'Norway' },
-    { value: 'OM', label: 'Oman' },
-    { value: 'PK', label: 'Pakistan' },
-    { value: 'PW', label: 'Palau' },
-    { value: 'PA', label: 'Panama' },
-    { value: 'PG', label: 'Papua New Guinea' },
-    { value: 'PY', label: 'Paraguay' },
-    { value: 'PE', label: 'Peru' },
-    { value: 'PH', label: 'Philippines' },
-    { value: 'PL', label: 'Poland' },
-    { value: 'PT', label: 'Portugal' },
-    { value: 'QA', label: 'Qatar' },
-    { value: 'RO', label: 'Romania' },
-    { value: 'RU', label: 'Russia' },
-    { value: 'RW', label: 'Rwanda' },
-    { value: 'KN', label: 'Saint Kitts and Nevis' },
-    { value: 'LC', label: 'Saint Lucia' },
-    { value: 'VC', label: 'Saint Vincent and the Grenadines' },
-    { value: 'WS', label: 'Samoa' },
-    { value: 'SM', label: 'San Marino' },
-    { value: 'ST', label: 'Sao Tome and Principe' },
-    { value: 'SA', label: 'Saudi Arabia' },
-    { value: 'SN', label: 'Senegal' },
-    { value: 'RS', label: 'Serbia' },
-    { value: 'SC', label: 'Seychelles' },
-    { value: 'SL', label: 'Sierra Leone' },
-    { value: 'SG', label: 'Singapore' },
-    { value: 'SK', label: 'Slovakia' },
-    { value: 'SI', label: 'Slovenia' },
-    { value: 'SB', label: 'Solomon Islands' },
-    { value: 'SO', label: 'Somalia' },
-    { value: 'ZA', label: 'South Africa' },
-    { value: 'SS', label: 'South Sudan' },
-    { value: 'ES', label: 'Spain' },
-    { value: 'LK', label: 'Sri Lanka' },
-    { value: 'SD', label: 'Sudan' },
-    { value: 'SR', label: 'Suriname' },
-    { value: 'SE', label: 'Sweden' },
-    { value: 'CH', label: 'Switzerland' },
-    { value: 'SY', label: 'Syria' },
-    { value: 'TJ', label: 'Tajikistan' },
-    { value: 'TZ', label: 'Tanzania' },
-    { value: 'TH', label: 'Thailand' },
-    { value: 'TL', label: 'Timor-Leste' },
-    { value: 'TG', label: 'Togo' },
-    { value: 'TO', label: 'Tonga' },
-    { value: 'TT', label: 'Trinidad and Tobago' },
-    { value: 'TN', label: 'Tunisia' },
-    { value: 'TR', label: 'Turkey' },
-    { value: 'TM', label: 'Turkmenistan' },
-    { value: 'TV', label: 'Tuvalu' },
-    { value: 'UG', label: 'Uganda' },
-    { value: 'UA', label: 'Ukraine' },
-    { value: 'AE', label: 'United Arab Emirates' },
-    { value: 'GB', label: 'United Kingdom' },
-    { value: 'US', label: 'United States' },
-    { value: 'UY', label: 'Uruguay' },
-    { value: 'UZ', label: 'Uzbekistan' },
-    { value: 'VU', label: 'Vanuatu' },
-    { value: 'VE', label: 'Venezuela' },
-    { value: 'VN', label: 'Vietnam' },
-    { value: 'YE', label: 'Yemen' },
-    { value: 'ZM', label: 'Zambia' },
-    { value: 'ZW', label: 'Zimbabwe' },
+  const requirementOptions = [
+    'Statement of Purpose',
+    'Writing Samples',
+    'Research Proposal',
+    'Transcripts',
+    'GPA/Class of Degree',
+    'Standardized Test Scores (GRE)',
+    'English Proficiency Test Scores',
+    'Credential Evaluation',
+    'CV/Resume',
+    'Application Fee',
+    'Recommenders',
+    'Others',
   ];
 
-  const updateFormData = (key, value) => {
-    setFormData({ ...formData, [key]: value });
-    if (errors[key]) setErrors({ ...errors, [key]: '' });
+  const [newRequirement, setNewRequirement] = useState({
+    name: '',
+    criteria_type: null,
+    criteria_value: null,
+    min_score: null,
+    test_type: null,
+    waived: false,
+    conversion: null,
+    type: null,
+    num_recommenders: '',
+  });
+
+  const handleAddRequirement = () => {
+    if (!newRequirement.name) return;
+    if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) return;
+    if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value) return;
+    if (newRequirement.name === 'GPA/Class of Degree' && !newRequirement.conversion) return;
+    if (newRequirement.name === 'Standardized Test Scores (GRE)' && !newRequirement.min_score) return;
+    if (newRequirement.name === 'Application Fee' && !formData.application_fee && !formData.fee_waived) return;
+    if (newRequirement.name === 'Recommenders' && !newRequirement.num_recommenders) return;
+
+    setFormData({
+      ...formData,
+      requirements: [
+        ...formData.requirements,
+        {
+          name: newRequirement.name,
+          criteria_type: newRequirement.criteria_type || null,
+          criteria_value: newRequirement.criteria_value ? parseInt(newRequirement.criteria_value) : null,
+          min_score: newRequirement.min_score || null,
+          test_type: newRequirement.test_type || null,
+          waived: newRequirement.waived || false,
+          conversion: newRequirement.conversion || null,
+          type: newRequirement.type || null,
+        },
+      ],
+      num_recommenders: newRequirement.name === 'Recommenders' ? newRequirement.num_recommenders : formData.num_recommenders,
+    });
+    setNewRequirement({
+      name: '',
+      criteria_type: null,
+      criteria_value: null,
+      min_score: null,
+      test_type: null,
+      waived: false,
+      conversion: null,
+      type: null,
+      num_recommenders: '',
+    });
   };
 
-  const addImportantDate = () => {
-    setFormData({ ...formData, important_dates: [...formData.important_dates, { name: '', date: '' }] });
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { program, country, level, application_fee, fee_waived, fee_waiver_details, funding_status, program_link, portal_link, num_recommenders, requirements } = formData;
+    if (!program || !country || !level || (!application_fee && !fee_waived)) return;
 
-  const updateImportantDate = (index, field, value) => {
-    const newDates = [...formData.important_dates];
-    newDates[index][field] = value;
-    setFormData({ ...formData, important_dates: newDates });
-  };
-
-  const toggleRequirement = (reqName) => {
-    setRequirements({
-      ...requirements,
-      [reqName]: {
-        ...requirements[reqName],
-        selected: !requirements[reqName].selected,
-        type: requirements[reqName].selected ? '' : requirements[reqName].type,
-        conversion: requirements[reqName].selected ? '' : requirements[reqName].conversion,
-        details: requirements[reqName].selected ? '' : requirements[reqName].details,
-        test_type: requirements[reqName].selected ? '' : requirements[reqName].test_type,
-        waived: requirements[reqName].selected ? false : requirements[reqName].waived,
-        criteria_type: requirements[reqName].selected ? '' : requirements[reqName].criteria_type,
-        criteria_value: requirements[reqName].selected ? '' : requirements[reqName].criteria_value,
-        char_count: requirements[reqName].selected ? '' : requirements[reqName].char_count,
+    const { data: appData, error: appError } = await supabase.from('applications').insert([
+      {
+        user_id: session.user.id,
+        program,
+        country,
+        level,
+        application_fee: fee_waived ? '0' : application_fee,
+        fee_waived,
+        fee_waiver_details: fee_waived ? fee_waiver_details : null,
+        funding_status,
+        program_link: program_link || null,
+        portal_link: portal_link || null,
+        progress: 0,
+        status: 'Planning',
       },
-    });
-    setErrors({ ...errors, requirements: { ...errors.requirements, [reqName]: {} } });
-  };
-
-  const updateRequirementField = (reqName, field, value) => {
-    setRequirements({
-      ...requirements,
-      [reqName]: { ...requirements[reqName], [field]: value },
-    });
-    if (errors.requirements[reqName]?.[field]) {
-      setErrors({
-        ...errors,
-        requirements: { ...errors.requirements, [reqName]: { ...errors.requirements[reqName], [field]: '' } },
-      });
-    }
-  };
-
-  const validateStep1 = () => {
-    const newErrors = {};
-    if (!formData.country) newErrors.country = 'Country is required';
-    if (!formData.level) newErrors.level = 'Program Level is required';
-    if (!formData.program.trim()) newErrors.program = 'Program Name is required';
-    if (!formData.application_fee && !formData.fee_waived) newErrors.application_fee = 'Application Fee is required';
-    if (formData.fee_waived && !formData.fee_waiver_details.trim()) newErrors.fee_waiver_details = 'Waiver details are required';
-    setErrors({ ...errors, ...newErrors });
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validateStep3 = () => {
-    const reqErrors = {};
-    Object.entries(requirements).forEach(([reqName, req]) => {
-      if (req.selected) {
-        const errors = {};
-        if (reqName === 'Transcripts' && !req.type) errors.type = 'Transcript type is required';
-        if (reqName === 'GPA/Class of Degree' && !req.conversion.trim()) errors.conversion = 'Conversion details are required';
-        if (reqName === 'Standardized Test Scores (GRE)' && !req.details.trim()) errors.details = 'Test requirements are required';
-        if (reqName === 'English Proficiency Test Scores' && !req.waived && !req.test_type) errors.test_type = 'Test type is required';
-        if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(reqName)) {
-          if (!req.criteria_type) errors.criteria_type = 'Criteria type is required';
-          if (!req.criteria_value) errors.criteria_value = 'Criteria value is required';
-        }
-        if (reqName === 'Credential Evaluation' && !req.details.trim()) errors.details = 'Evaluation details are required';
-        if (Object.keys(errors).length > 0) reqErrors[reqName] = errors;
-      }
-    });
-    if (requiresRecommenders && numRecommenders < 1) {
-      reqErrors['Letters of Recommendation'] = { numRecommenders: 'At least one recommender is required' };
-    }
-    setErrors({ ...errors, requirements: reqErrors });
-    return Object.keys(reqErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateStep1()) {
-      setStep(1);
-      return;
-    }
-    if (step === 3 && !validateStep3()) return;
-
-    const appData = {
-      user_id: session.user.id,
-      country: formData.country ? formData.country.label : '',
-      level: formData.level,
-      program: formData.program,
-      application_fee: formData.application_fee,
-      fee_waived: formData.fee_waived,
-      fee_waiver_details: formData.fee_waived ? formData.fee_waiver_details : null,
-      status: formData.status,
-      funding_status: formData.funding_status,
-      progress: 0,
-      program_link: formData.program_link,
-      portal_link: formData.portal_link,
-    };
-
-    const { data: app, error: appError } = await supabase
-      .from('applications')
-      .insert([appData])
-      .select()
-      .single();
+    ]).select().single();
 
     if (appError) {
       console.error(appError);
       return;
     }
 
-    if (formData.important_dates.length > 0) {
-      const dateInsert = formData.important_dates.map((date) => ({ ...date, application_id: app.id }));
-      const { error: dateError } = await supabase.from('important_dates').insert(dateInsert);
-      if (dateError) console.error(dateError);
-    }
-
-    const selectedRequirements = Object.entries(requirements)
-      .filter(([_, req]) => req.selected)
-      .map(([name, req]) => ({
-        name,
-        application_id: app.id,
+    if (requirements.length > 0) {
+      const reqs = requirements.map((req) => ({
+        application_id: appData.id,
+        name: req.name,
         is_completed: false,
-        criteria_type: req.criteria_type || null,
-        criteria_value: req.criteria_value ? parseInt(req.criteria_value) : null,
-        char_count: req.char_count ? parseInt(req.char_count) : null,
-        min_score: req.details || null,
-        test_type: req.test_type || null,
-        waived: req.waived || false,
-        conversion: req.conversion || null,
-        type: req.type || null,
+        criteria_type: req.criteria_type,
+        criteria_value: req.criteria_value,
+        min_score: req.min_score,
+        test_type: req.test_type,
+        waived: req.waived,
+        conversion: req.conversion,
+        type: req.type,
       }));
-
-    if (selectedRequirements.length > 0) {
-      const { error: reqError } = await supabase.from('requirements').insert(selectedRequirements);
+      const { error: reqError } = await supabase.from('requirements').insert(reqs);
       if (reqError) console.error(reqError);
     }
 
-    if (requiresRecommenders && numRecommenders > 0) {
-      const recInsert = Array.from({ length: numRecommenders }, (_, idx) => ({
-        name: `Recommender ${idx + 1}`,
-        type: recommenderTypes.split(',').length > idx ? recommenderTypes.split(',')[idx].trim() : null,
+    if (num_recommenders && requirements.some((req) => req.name === 'Recommenders')) {
+      const recs = Array(parseInt(num_recommenders)).fill().map(() => ({
+        application_id: appData.id,
         status: 'Unidentified',
-        application_id: app.id,
       }));
-      const { error: recError } = await supabase.from('recommenders').insert(recInsert);
+      const { error: recError } = await supabase.from('recommenders').insert(recs);
       if (recError) console.error(recError);
     }
 
     navigate('/');
   };
 
-  const nextStep = () => {
-    if (step === 1 && !validateStep1()) return;
-    if (step === 3 && !validateStep3()) return;
-    setStep(step + 1);
-  };
-
-  const prevStep = () => setStep(step - 1);
-
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-4 text-neutralDark">Basic Information</h2>
-            <div className="mb-4">
-              <label htmlFor="country" className="block text-neutralDark mb-1">
-                Country <span className="text-red-500">*</span>
-              </label>
-              <Select
-                id="country"
-                options={countries}
-                value={formData.country}
-                onChange={(option) => updateFormData('country', option)}
-                placeholder="Select a country"
-                className="w-full"
-                classNamePrefix="react-select"
-              />
-              {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
-            </div>
-            <div className="mb-4">
-              <label htmlFor="level" className="block text-neutralDark mb-1">
-                Program Level <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="level"
-                value={formData.level}
-                onChange={(e) => updateFormData('level', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
-              >
-                <option value="">Select Program Level</option>
-                <option value="Masters">Masters</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {errors.level && <p className="text-red-500 text-sm mt-1">{errors.level}</p>}
-            </div>
-            <div className="mb-4">
-              <label htmlFor="program" className="block text-neutralDark mb-1">
-                Program Name <span className="text-red-500">*</span>
-              </label>
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+      <h2 className="text-2xl md:text-3xl font-bold mb-6 text-primary">Add New Application</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Program</label>
+          <input
+            type="text"
+            value={formData.program}
+            onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+            placeholder="e.g., Computer Science"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Country</label>
+          <input
+            type="text"
+            value={formData.country}
+            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+            placeholder="e.g., USA"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Program Level</label>
+          <select
+            value={formData.level}
+            onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+            required
+          >
+            <option value="Masters">Masters</option>
+            <option value="PhD">PhD</option>
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Application Fee</label>
+          <input
+            type="text"
+            value={formData.application_fee}
+            onChange={(e) => setFormData({ ...formData, application_fee: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+            placeholder="e.g., $100 or 0"
+            disabled={formData.fee_waived}
+            required={!formData.fee_waived}
+          />
+          <label className="block mt-2">
+            <input
+              type="checkbox"
+              checked={formData.fee_waived}
+              onChange={() => setFormData({ ...formData, fee_waived: !formData.fee_waived })}
+            />{' '}
+            Fee Waived
+          </label>
+          {formData.fee_waived && (
+            <div className="mt-2">
+              <label className="block text-neutralDark mb-1">Waiver Details</label>
               <input
-                id="program"
                 type="text"
-                placeholder="Enter program name"
-                value={formData.program}
-                onChange={(e) => updateFormData('program', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
+                value={formData.fee_waiver_details}
+                onChange={(e) => setFormData({ ...formData, fee_waiver_details: e.target.value })}
+                className="p-1 border border-gray-300 rounded w-full"
+                placeholder="e.g., Financial hardship waiver"
               />
-              {errors.program && <p className="text-red-500 text-sm mt-1">{errors.program}</p>}
             </div>
-            <div className="mb-4">
-              <label htmlFor="application-fee" className="block text-neutralDark mb-1">
-                Application Fee <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="application-fee"
-                type="text"
-                placeholder="e.g., $100 or 0"
-                value={formData.application_fee}
-                onChange={(e) => updateFormData('application_fee', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
-                disabled={formData.fee_waived}
-              />
-              {errors.application_fee && <p className="text-red-500 text-sm mt-1">{errors.application_fee}</p>}
-              <label className="block mt-2">
-                <input
-                  type="checkbox"
-                  checked={formData.fee_waived}
-                  onChange={() => updateFormData('fee_waived', !formData.fee_waived)}
-                />{' '}
-                Fee Waived
-              </label>
-              {formData.fee_waived && (
-                <div className="mt-2">
-                  <label htmlFor="fee-waiver-details" className="block text-neutralDark mb-1">
-                    Waiver Details <span className="text-red-500">*</span>
-                  </label>
+          )}
+        </div>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Funding</label>
+          <select
+            value={formData.funding_status}
+            onChange={(e) => setFormData({ ...formData, funding_status: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+          >
+            <option>None</option>
+            <option>Partial</option>
+            <option>Full</option>
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Program URL</label>
+          <input
+            type="url"
+            value={formData.program_link}
+            onChange={(e) => setFormData({ ...formData, program_link: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+            placeholder="e.g., https://university.edu/program"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-neutralDark mb-1">Application URL</label>
+          <input
+            type="url"
+            value={formData.portal_link}
+            onChange={(e) => setFormData({ ...formData, portal_link: e.target.value })}
+            className="p-1 border border-gray-300 rounded w-full"
+            placeholder="e.g., https://apply.university.edu"
+          />
+        </div>
+        <div className="mb-6">
+          <label className="block text-neutralDark mb-1">Add Requirement</label>
+          <div className="flex flex-col space-y-2 w-full md:w-1/3">
+            <select
+              value={newRequirement.name}
+              onChange={(e) => setNewRequirement({ ...newRequirement, name: e.target.value, criteria_type: null, criteria_value: null, min_score: null, test_type: null, waived: false, conversion: null, type: null, num_recommenders: '' })}
+              className="p-1 border border-gray-300 rounded"
+              required
+            >
+              <option value="">Select Requirement</option>
+              {requirementOptions
+                .filter((option) => !formData.requirements.some((req) => req.name === option))
+                .map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+            </select>
+            {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && (
+              <div className="flex flex-col space-y-2">
+                <select
+                  value={newRequirement.criteria_type || ''}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, criteria_type: e.target.value, criteria_value: e.target.value === 'Unspecified' ? null : newRequirement.criteria_value })}
+                  className="p-1 border border-gray-300 rounded"
+                  required
+                >
+                  <option value="">Select Criteria</option>
+                  <option>Words</option>
+                  <option>Pages</option>
+                  <option>Characters</option>
+                  <option>Unspecified</option>
+                </select>
+                {newRequirement.criteria_type !== 'Unspecified' && (
                   <input
-                    id="fee-waiver-details"
-                    type="text"
-                    placeholder="e.g., Financial hardship waiver"
-                    value={formData.fee_waiver_details}
-                    onChange={(e) => updateFormData('fee_waiver_details', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
+                    type="number"
+                    value={newRequirement.criteria_value || ''}
+                    onChange={(e) => setNewRequirement({ ...newRequirement, criteria_value: e.target.value })}
+                    className="p-1 border border-gray-300 rounded"
+                    placeholder="Value"
+                    required
                   />
-                  {errors.fee_waiver_details && <p className="text-red-500 text-sm mt-1">{errors.fee_waiver_details}</p>}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-4 text-neutralDark">Important Dates</h2>
-            {formData.important_dates.map((date, idx) => (
-              <div key={idx} className="flex mb-2">
-                <div className="flex-1 mr-2">
-                  <label htmlFor={`date-name-${idx}`} className="block text-neutralDark mb-1">Date Name</label>
-                  <input
-                    id={`date-name-${idx}`}
-                    type="text"
-                    placeholder="e.g., Application Deadline"
-                    value={date.name}
-                    onChange={(e) => updateImportantDate(idx, 'name', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
-                <div>
-                  <label htmlFor={`date-date-${idx}`} className="block text-neutralDark mb-1">Date</label>
-                  <input
-                    id={`date-date-${idx}`}
-                    type="date"
-                    value={date.date}
-                    onChange={(e) => updateImportantDate(idx, 'date', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
-              </div>
-            ))}
-            <button onClick={addImportantDate} className="bg-secondary text-white py-2 px-4 rounded mt-2">
-              Add Important Date
-            </button>
-          </div>
-        );
-      case 3:
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-4 text-neutralDark">Requirements</h2>
-            {Object.keys(requirements).map((reqName) => (
-              <div key={reqName} className="mb-4">
-                <label className="block mb-2">
-                  <input
-                    type="checkbox"
-                    checked={requirements[reqName].selected}
-                    onChange={() => toggleRequirement(reqName)}
-                  />{' '}
-                  {reqName}
-                </label>
-                {requirements[reqName].selected && (
-                  <div className="ml-6">
-                    {reqName === 'Transcripts' && (
-                      <div className="mb-2">
-                        <label htmlFor={`${reqName}-type`} className="block text-neutralDark mb-1">
-                          Transcript Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id={`${reqName}-type`}
-                          value={requirements[reqName].type}
-                          onChange={(e) => updateRequirementField(reqName, 'type', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded"
-                        >
-                          <option value="">Select Type</option>
-                          <option>Official</option>
-                          <option>Unofficial</option>
-                          <option>Evaluated</option>
-                        </select>
-                        {errors.requirements[reqName]?.type && (
-                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].type}</p>
-                        )}
-                      </div>
-                    )}
-                    {reqName === 'GPA/Class of Degree' && (
-                      <div className="mb-2">
-                        <label htmlFor={`${reqName}-conversion`} className="block text-neutralDark mb-1">
-                          Conversion Details <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          id={`${reqName}-conversion`}
-                          type="text"
-                          placeholder="e.g., 3.5/4.0 or First Class"
-                          value={requirements[reqName].conversion}
-                          onChange={(e) => updateRequirementField(reqName, 'conversion', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded"
-                        />
-                        {errors.requirements[reqName]?.conversion && (
-                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].conversion}</p>
-                        )}
-                      </div>
-                    )}
-                    {reqName === 'Standardized Test Scores (GRE)' && (
-                      <div className="mb-2">
-                        <label htmlFor={`${reqName}-details`} className="block text-neutralDark mb-1">
-                          Test Requirements <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          id={`${reqName}-details`}
-                          type="text"
-                          placeholder="e.g., 160 Verbal, 160 Quantitative"
-                          value={requirements[reqName].details}
-                          onChange={(e) => updateRequirementField(reqName, 'details', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded"
-                        />
-                        {errors.requirements[reqName]?.details && (
-                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].details}</p>
-                        )}
-                      </div>
-                    )}
-                    {reqName === 'English Proficiency Test Scores' && (
-                      <div className="mb-2">
-                        <label className="block mb-2">
-                          <input
-                            type="checkbox"
-                            checked={requirements[reqName].waived}
-                            onChange={() => updateRequirementField(reqName, 'waived', !requirements[reqName].waived)}
-                          />{' '}
-                          Waived
-                        </label>
-                        {!requirements[reqName].waived && (
-                          <div>
-                            <label htmlFor={`${reqName}-test-type`} className="block text-neutralDark mb-1">
-                              Test Type <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                              id={`${reqName}-test-type`}
-                              value={requirements[reqName].test_type}
-                              onChange={(e) => updateRequirementField(reqName, 'test_type', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded"
-                            >
-                              <option value="">Select Test</option>
-                              <option>TOEFL</option>
-                              <option>IELTS</option>
-                              <option>Duolingo</option>
-                              <option>Letter from School</option>
-                            </select>
-                            {errors.requirements[reqName]?.test_type && (
-                              <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].test_type}</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(reqName) && (
-                      <div className="mb-2">
-                        <label htmlFor={`${reqName}-criteria`} className="block text-neutralDark mb-1">
-                          Criteria Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id={`${reqName}-criteria`}
-                          value={requirements[reqName].criteria_type}
-                          onChange={(e) => updateRequirementField(reqName, 'criteria_type', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded mb-2"
-                        >
-                          <option value="">Select Criteria</option>
-                          <option>Words</option>
-                          <option>Pages</option>
-                          <option>Characters</option>
-                        </select>
-                        {errors.requirements[reqName]?.criteria_type && (
-                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].criteria_type}</p>
-                        )}
-                        <label htmlFor={`${reqName}-value`} className="block text-neutralDark mb-1">
-                          Criteria Value <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          id={`${reqName}-value`}
-                          type="number"
-                          placeholder="e.g., 500"
-                          value={requirements[reqName].criteria_value}
-                          onChange={(e) => updateRequirementField(reqName, 'criteria_value', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded mb-2"
-                        />
-                        {errors.requirements[reqName]?.criteria_value && (
-                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].criteria_value}</p>
-                        )}
-                        <label htmlFor={`${reqName}-char-count`} className="block text-neutralDark mb-1">Character Count</label>
-                        <input
-                          id={`${reqName}-char-count`}
-                          type="number"
-                          placeholder="e.g., 4000"
-                          value={requirements[reqName].char_count}
-                          onChange={(e) => updateRequirementField(reqName, 'char_count', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded"
-                        />
-                      </div>
-                    )}
-                    {reqName === 'Credential Evaluation' && (
-                      <div className="mb-2">
-                        <label htmlFor={`${reqName}-details`} className="block text-neutralDark mb-1">
-                          Evaluation Details <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          id={`${reqName}-details`}
-                          type="text"
-                          placeholder="e.g., WES Evaluation"
-                          value={requirements[reqName].details}
-                          onChange={(e) => updateRequirementField(reqName, 'details', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded"
-                        />
-                        {errors.requirements[reqName]?.details && (
-                          <p className="text-red-500 text-sm mt-1">{errors.requirements[reqName].details}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 )}
               </div>
-            ))}
-            <label className="block mb-2">
+            )}
+            {newRequirement.name === 'Transcripts' && (
+              <select
+                value={newRequirement.type || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, type: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+              >
+                <option value="">Select Type</option>
+                <option>Official</option>
+                <option>Unofficial</option>
+                <option>Evaluated</option>
+              </select>
+            )}
+            {newRequirement.name === 'GPA/Class of Degree' && (
               <input
-                type="checkbox"
-                checked={requiresRecommenders}
-                onChange={() => {
-                  setRequiresRecommenders(!requiresRecommenders);
-                  if (!requiresRecommenders) {
-                    setNumRecommenders(0);
-                    setRecommenderTypes('');
-                  }
-                  setErrors({
-                    ...errors,
-                    requirements: { ...errors.requirements, 'Letters of Recommendation': {} },
-                  });
-                }}
-              />{' '}
-              Letters of Recommendation
-            </label>
-            {requiresRecommenders && (
-              <div className="ml-6">
-                <div className="mb-4">
-                  <label htmlFor="num-recommenders" className="block text-neutralDark mb-1">
-                    Number of Recommenders <span className="text-red-500">*</span>
-                  </label>
+                type="text"
+                value={newRequirement.conversion || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, conversion: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="e.g., 3.5/4.0"
+                required
+              />
+            )}
+            {newRequirement.name === 'Standardized Test Scores (GRE)' && (
+              <input
+                type="text"
+                value={newRequirement.min_score || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="e.g., 160 Verbal, 160 Quantitative"
+                required
+              />
+            )}
+            {newRequirement.name === 'English Proficiency Test Scores' && (
+              <div className="flex flex-col space-y-2">
+                <label>
                   <input
-                    id="num-recommenders"
-                    type="number"
-                    min="1"
-                    value={numRecommenders}
-                    onChange={(e) => {
-                      setNumRecommenders(parseInt(e.target.value) || 0);
-                      if (errors.requirements['Letters of Recommendation']?.numRecommenders) {
-                        setErrors({
-                          ...errors,
-                          requirements: {
-                            ...errors.requirements,
-                            'Letters of Recommendation': { ...errors.requirements['Letters of Recommendation'], numRecommenders: '' },
-                          },
-                        });
-                      }
-                    }}
-                    placeholder="e.g., 2"
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                  {errors.requirements['Letters of Recommendation']?.numRecommenders && (
-                    <p className="text-red-500 text-sm mt-1">{errors.requirements['Letters of Recommendation'].numRecommenders}</p>
-                  )}
-                </div>
-                <div>
-                  <label htmlFor="recommender-types" className="block text-neutralDark mb-1">Recommender Types</label>
-                  <textarea
-                    id="recommender-types"
-                    placeholder="e.g., 1 Academic, 1 Professional"
-                    value={recommenderTypes}
-                    onChange={(e) => setRecommenderTypes(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
+                    type="checkbox"
+                    checked={newRequirement.waived || false}
+                    onChange={(e) => setNewRequirement({ ...newRequirement, waived: e.target.checked })}
+                  />{' '}
+                  Waived
+                </label>
+                {!newRequirement.waived && (
+                  <select
+                    value={newRequirement.test_type || ''}
+                    onChange={(e) => setNewRequirement({ ...newRequirement, test_type: e.target.value })}
+                    className="p-1 border border-gray-300 rounded"
+                  >
+                    <option value="">Select Test</option>
+                    <option>TOEFL</option>
+                    <option>IELTS</option>
+                    <option>Duolingo</option>
+                    <option>Letter from School</option>
+                  </select>
+                )}
               </div>
             )}
-          </div>
-        );
-      case 4:
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-4 text-neutralDark">Links & Status</h2>
-            <div className="mb-4">
-              <label htmlFor="program-link" className="block text-neutralDark mb-1">Program Link</label>
+            {newRequirement.name === 'Credential Evaluation' && (
               <input
-                id="program-link"
-                type="url"
-                placeholder="e.g., https://university.edu/program"
-                value={formData.program_link}
-                onChange={(e) => updateFormData('program_link', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
+                type="text"
+                value={newRequirement.min_score || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="e.g., WES Evaluation"
               />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="portal-link" className="block text-neutralDark mb-1">Portal Link</label>
+            )}
+            {newRequirement.name === 'Recommenders' && (
               <input
-                id="portal-link"
-                type="url"
-                placeholder="e.g., https://apply.university.edu"
-                value={formData.portal_link}
-                onChange={(e) => updateFormData('portal_link', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
+                type="number"
+                value={newRequirement.num_recommenders || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, num_recommenders: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="Number of recommenders"
+                min="1"
+                required
               />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="status" className="block text-neutralDark mb-1">Application Status</label>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => updateFormData('status', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
+            )}
+            {newRequirement.name && (
+              <button
+                type="button"
+                onClick={handleAddRequirement}
+                className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
+                disabled={
+                  !newRequirement.name ||
+                  (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
+                  (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value) ||
+                  (newRequirement.name === 'GPA/Class of Degree' && !newRequirement.conversion) ||
+                  (newRequirement.name === 'Standardized Test Scores (GRE)' && !newRequirement.min_score) ||
+                  (newRequirement.name === 'Application Fee' && !formData.application_fee && !formData.fee_waived) ||
+                  (newRequirement.name === 'Recommenders' && !newRequirement.num_recommenders)
+                }
               >
-                <option>Planning</option>
-                <option>In Progress</option>
-                <option>Submitted</option>
-                <option>Abandoned</option>
-                <option>Waitlisted</option>
-                <option>Awarded</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="funding-status" className="block text-neutralDark mb-1">Funding Status</label>
-              <select
-                id="funding-status"
-                value={formData.funding_status}
-                onChange={(e) => updateFormData('funding_status', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
-              >
-                <option>None</option>
-                <option>Partial</option>
-                <option>Full</option>
-              </select>
-            </div>
+                Add Requirement
+              </button>
+            )}
           </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-      <div className="mb-8">
-        <div className="flex justify-between">
-          {Array(4).fill(0).map((_, i) => (
-            <div key={i} className={`w-1/4 h-1 ${i + 1 <= step ? 'bg-accent' : 'bg-gray-300'}`} />
-          ))}
+          {formData.requirements.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-lg font-bold text-neutralDark">Added Requirements</h3>
+              <ul className="list-disc pl-5">
+                {formData.requirements.map((req, index) => (
+                  <li key={index}>
+                    {req.name}
+                    {req.criteria_type && req.criteria_value ? `: ${req.criteria_value} ${req.criteria_type}` : req.criteria_type === 'Unspecified' ? ': Unspecified' : ''}
+                    {req.type ? `, ${req.type}` : ''}
+                    {req.conversion ? `, Conversion: ${req.conversion}` : ''}
+                    {req.min_score ? `, ${req.min_score}` : ''}
+                    {req.test_type ? `, ${req.waived ? `${req.test_type}, Waived` : req.test_type}` : req.waived ? ', Waived' : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-        <p className="text-center mt-2 text-neutralDark">Step {step}/4</p>
-      </div>
-      {renderStep()}
-      <div className="flex justify-between mt-8">
-        {step > 1 && (
-          <button onClick={prevStep} className="bg-gray-300 text-neutralDark py-2 px-4 rounded">
-            Back
-          </button>
-        )}
-        {step < 4 ? (
-          <button onClick={nextStep} className="bg-primary text-white py-2 px-4 rounded ml-auto">
-            Next
-          </button>
-        ) : (
-          <button onClick={handleSubmit} className="bg-accent text-white py-2 px-4 rounded ml-auto">
-            Submit
-          </button>
-        )}
-      </div>
+        <button type="submit" className="bg-primary text-white py-2 px-4 rounded">
+          Submit Application
+        </button>
+      </form>
     </div>
   );
 }

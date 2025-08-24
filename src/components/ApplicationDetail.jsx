@@ -12,6 +12,17 @@ export default function ApplicationDetail({ session }) {
   const [recommenders, setRecommenders] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [newRequirement, setNewRequirement] = useState({
+    name: '',
+    criteria_type: null,
+    criteria_value: null,
+    min_score: null,
+    test_type: null,
+    waived: false,
+    conversion: null,
+    type: null,
+    num_recommenders: '',
+  });
 
   useEffect(() => {
     fetchData();
@@ -86,13 +97,55 @@ export default function ApplicationDetail({ session }) {
     else setImportantDates(importantDates.map((d) => (d.id === dateId ? { ...d, [field]: value } : d)));
   };
 
-  const addRequirement = async (name, criteria_type = null, criteria_value = null, char_count = null, min_score = null, test_type = null, waived = false, conversion = null, type = null) => {
+  const addRequirement = async () => {
+    const { name, criteria_type, criteria_value, min_score, test_type, waived, conversion, type, num_recommenders } = newRequirement;
     if (!name) return;
-    const newReq = { application_id: id, name, is_completed: false, criteria_type, criteria_value, char_count, min_score, test_type, waived, conversion, type };
+    if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(name) && !criteria_type) return;
+    if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(name) && criteria_type !== 'Unspecified' && !criteria_value) return;
+    if (name === 'GPA/Class of Degree' && !conversion) return;
+    if (name === 'Standardized Test Scores (GRE)' && !min_score) return;
+    if (name === 'Application Fee' && !app.application_fee && !app.fee_waived) return;
+    if (name === 'Recommenders' && !num_recommenders) return;
+
+    const newReq = {
+      application_id: id,
+      name,
+      is_completed: false,
+      criteria_type: criteria_type || null,
+      criteria_value: criteria_value ? parseInt(criteria_value) : null,
+      min_score: min_score || null,
+      test_type: test_type || null,
+      waived: waived || false,
+      conversion: conversion || null,
+      type: type || null,
+    };
     const { data, error } = await supabase.from('requirements').insert([newReq]).select().single();
     if (error) console.error(error);
     else {
       setRequirements([...requirements, data]);
+      if (name === 'Recommenders' && num_recommenders) {
+        const recs = Array(parseInt(num_recommenders)).fill().map(() => ({
+          application_id: id,
+          status: 'Unidentified',
+        }));
+        const { error: recError } = await supabase.from('recommenders').insert(recs);
+        if (recError) console.error(recError);
+        else {
+          const { data: newRecs } = await supabase.from('recommenders').select('*').eq('application_id', id);
+          setRecommenders(newRecs || []);
+        }
+      }
+      setNewRequirement({
+        name: '',
+        criteria_type: null,
+        criteria_value: null,
+        min_score: null,
+        test_type: null,
+        waived: false,
+        conversion: null,
+        type: null,
+        num_recommenders: '',
+      });
       updateProgress();
     }
   };
@@ -121,257 +174,339 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
+  const getRequirementDetails = (req) => {
+    const details = [];
+    if (req.criteria_type && req.criteria_value) details.push(`${req.criteria_value} ${req.criteria_type}`);
+    else if (req.criteria_type === 'Unspecified') details.push('Unspecified');
+    if (req.test_type) details.push(req.waived ? `${req.test_type}, Waived` : req.test_type);
+    else if (req.waived) details.push('Waived');
+    if (req.conversion) details.push(`Conversion: ${req.conversion}`);
+    if (req.min_score && (req.name === 'Standardized Test Scores (GRE)' || req.name === 'Credential Evaluation')) details.push(req.min_score);
+    if (req.type) details.push(req.type);
+    return details.join(', ') || 'None';
+  };
+
+  const requirementOptions = [
+    'Statement of Purpose',
+    'Writing Samples',
+    'Research Proposal',
+    'Transcripts',
+    'GPA/Class of Degree',
+    'Standardized Test Scores (GRE)',
+    'English Proficiency Test Scores',
+    'Credential Evaluation',
+    'CV/Resume',
+    'Application Fee',
+    'Recommenders',
+    'Others',
+  ].filter((option) => !requirements.some((req) => req.name === option));
+
   if (loading) return <SkeletonDetail />;
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md">
+    <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
       <nav className="mb-6">
         <Link to="/" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
       </nav>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-primary">{app.program}</h2>
-        <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded">
+        <h2 className="text-2xl md:text-3xl font-bold text-primary">{app.program}</h2>
+        <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded text-sm md:text-base">
           {editMode ? 'View Mode' : 'Edit Mode'}
         </button>
       </div>
-      <p className="text-neutralDark mb-4">{app.country} - {app.level}</p>
-      <div className="mb-4">
-        <label htmlFor="application-fee" className="font-medium text-neutralDark">Application Fee:</label>
-        {editMode ? (
-          <>
-            <input
-              id="application-fee"
-              type="text"
-              value={app.application_fee}
-              onChange={(e) => updateAppField('application_fee', e.target.value)}
-              className="ml-2 p-1 border border-gray-300 rounded w-1/4"
-              placeholder="e.g., $100 or 0"
-              disabled={app.fee_waived}
-            />
-            <label className="block mt-2">
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Left Column: Core Info */}
+        <div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">Country:</span>
+            {editMode ? (
               <input
-                type="checkbox"
-                checked={app.fee_waived}
-                onChange={() => updateAppField('fee_waived', !app.fee_waived)}
-              />{' '}
-              Fee Waived
-            </label>
-            {app.fee_waived && (
-              <div className="mt-2">
-                <label htmlFor="fee-waiver-details" className="block text-neutralDark mb-1">Waiver Details</label>
-                <input
-                  id="fee-waiver-details"
-                  type="text"
-                  value={app.fee_waiver_details || ''}
-                  onChange={(e) => updateAppField('fee_waiver_details', e.target.value)}
-                  className="ml-2 p-1 border border-gray-300 rounded w-1/2"
-                  placeholder="e.g., Financial hardship waiver"
-                />
-              </div>
+                type="text"
+                value={app.country}
+                onChange={(e) => updateAppField('country', e.target.value)}
+                className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                required
+              />
+            ) : (
+              <span className="ml-2">{app.country}</span>
             )}
-          </>
-        ) : (
-          <span className="ml-2">
-            {app.fee_waived ? `Waived (${app.fee_waiver_details})` : app.application_fee}
-          </span>
-        )}
-      </div>
-      <div className="mb-4">
-        <label htmlFor="app-status" className="font-medium text-neutralDark">Status:</label>
-        {editMode ? (
-          <select
-            id="app-status"
-            value={app.status}
-            onChange={(e) => updateAppField('status', e.target.value)}
-            className="ml-2 p-1 border border-gray-300 rounded"
-          >
-            <option>Planning</option>
-            <option>In Progress</option>
-            <option>Submitted</option>
-            <option>Abandoned</option>
-            <option>Waitlisted</option>
-            <option>Awarded</option>
-          </select>
-        ) : (
-          <span className="ml-2">{app.status}</span>
-        )}
-      </div>
-      <div className="mb-4">
-        <label htmlFor="funding-status" className="font-medium text-neutralDark">Funding:</label>
-        {editMode ? (
-          <select
-            id="funding-status"
-            value={app.funding_status}
-            onChange={(e) => updateAppField('funding_status', e.target.value)}
-            className="ml-2 p-1 border border-gray-300 rounded"
-          >
-            <option>None</option>
-            <option>Partial</option>
-            <option>Full</option>
-          </select>
-        ) : (
-          <span className="ml-2">{app.funding_status}</span>
-        )}
-      </div>
-      <div className="mb-6">
-        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-          <div className="bg-accent h-2.5 rounded-full" style={{ width: `${app.progress}%` }} />
-        </div>
-        <p className="text-neutralDark">{app.progress}% Complete</p>
-      </div>
-
-      <h3 className="text-2xl font-bold mb-4 text-neutralDark">Important Dates</h3>
-      <ul className="mb-6">
-        {importantDates.map((date) => (
-          <li key={date.id} className="mb-2">
+          </div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">Program Level:</span>
+            {editMode ? (
+              <select
+                value={app.level}
+                onChange={(e) => updateAppField('level', e.target.value)}
+                className="ml-2 p-1 border border-gray-300 rounded"
+                required
+              >
+                <option value="Masters">Masters</option>
+                <option value="PhD">PhD</option>
+              </select>
+            ) : (
+              <span className="ml-2">{app.level}</span>
+            )}
+          </div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">Application Fee:</span>
             {editMode ? (
               <>
-                <label htmlFor={`date-name-${date.id}`} className="block text-neutralDark mb-1">Date Name</label>
                 <input
-                  id={`date-name-${date.id}`}
                   type="text"
-                  value={date.name}
-                  onChange={(e) => updateImportantDate(date.id, 'name', e.target.value)}
-                  className="p-1 border border-gray-300 rounded mr-2 w-full"
+                  value={app.application_fee}
+                  onChange={(e) => updateAppField('application_fee', e.target.value)}
+                  className="ml-2 p-1 border border-gray-300 rounded w-1/2"
+                  placeholder="e.g., $100 or 0"
+                  disabled={app.fee_waived}
+                  required={!app.fee_waived && requirements.some((req) => req.name === 'Application Fee')}
                 />
-                <label htmlFor={`date-date-${date.id}`} className="block text-neutralDark mb-1 mt-2">Date</label>
-                <input
-                  id={`date-date-${date.id}`}
-                  type="date"
-                  value={date.date}
-                  onChange={(e) => updateImportantDate(date.id, 'date', e.target.value)}
-                  className="p-1 border border-gray-300 rounded w-full"
-                />
+                <label className="block mt-2">
+                  <input
+                    type="checkbox"
+                    checked={app.fee_waived}
+                    onChange={() => updateAppField('fee_waived', !app.fee_waived)}
+                  />{' '}
+                  Fee Waived
+                </label>
+                {app.fee_waived && (
+                  <div className="mt-2">
+                    <label className="block text-neutralDark mb-1">Waiver Details</label>
+                    <input
+                      type="text"
+                      value={app.fee_waiver_details || ''}
+                      onChange={(e) => updateAppField('fee_waiver_details', e.target.value)}
+                      className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                      placeholder="e.g., Financial hardship waiver"
+                    />
+                  </div>
+                )}
               </>
             ) : (
-              `${date.name}: ${date.date}`
+              <span className="ml-2">{app.fee_waived ? `Waived (${app.fee_waiver_details})` : app.application_fee}</span>
             )}
-          </li>
-        ))}
-        {editMode && (
-          <button onClick={addImportantDate} className="bg-secondary text-white py-1 px-3 rounded mt-2">
-            Add Important Date
-          </button>
-        )}
-      </ul>
-
-      <h3 className="text-2xl font-bold mb-4 text-neutralDark">Requirements</h3>
-      <ul className="mb-6">
-        {requirements.map((req) => (
-          <li key={req.id} className="flex items-center mb-2">
-            {!editMode ? (
-              <input
-                type="checkbox"
-                checked={req.is_completed}
-                onChange={(e) => toggleRequirement(req.id, e.target.checked)}
-              />
-            ) : null}
-            <span className="ml-2">
-              {req.name}
-              {req.criteria_type && req.criteria_value ? ` (${req.criteria_value} ${req.criteria_type})` : ''}
-              {req.char_count ? ` (${req.char_count} characters)` : ''}
-              {req.test_type ? ` (${req.test_type}${req.waived ? ', Waived' : ''})` : req.waived ? ' (Waived)' : ''}
-              {req.conversion ? ` (Conversion: ${req.conversion})` : ''}
-              {req.min_score && req.name === 'Standardized Test Scores (GRE)' ? ` (${req.min_score})` : ''}
-              {req.min_score && req.name === 'Credential Evaluation' ? ` (${req.min_score})` : ''}
-              {req.type ? ` (${req.type})` : ''}
-            </span>
-            {editMode && (
-              <div className="ml-auto flex items-center">
-                {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(req.name) && (
+          </div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">Status:</span>
+            <select
+              value={app.status}
+              onChange={(e) => updateAppField('status', e.target.value)}
+              className="ml-2 p-1 border border-gray-300 rounded"
+            >
+              <option>Planning</option>
+              <option>In Progress</option>
+              <option>Submitted</option>
+              <option>Abandoned</option>
+              <option>Waitlisted</option>
+              <option>Awarded</option>
+            </select>
+          </div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">Funding:</span>
+            {editMode ? (
+              <select
+                value={app.funding_status}
+                onChange={(e) => updateAppField('funding_status', e.target.value)}
+                className="ml-2 p-1 border border-gray-300 rounded"
+              >
+                <option>None</option>
+                <option>Partial</option>
+                <option>Full</option>
+              </select>
+            ) : (
+              <span className="ml-2">{app.funding_status}</span>
+            )}
+          </div>
+          <div className="mb-6">
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+              <div className="bg-accent h-2.5 rounded-full" style={{ width: `${app.progress}%` }} />
+            </div>
+            <p className="text-neutralDark">{app.progress}% Complete</p>
+          </div>
+        </div>
+        {/* Right Column: Secondary Info */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-neutralDark">Links</h3>
+          {app.program_link && (
+            <div className="mb-4">
+              <span className="font-medium text-neutralDark">Program URL:</span>
+              {editMode ? (
+                <input
+                  type="url"
+                  value={app.program_link || ''}
+                  onChange={(e) => updateAppField('program_link', e.target.value)}
+                  className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                  placeholder="e.g., https://university.edu/program"
+                />
+              ) : (
+                <a
+                  href={app.program_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-secondary hover:underline"
+                >
+                  Program URL
+                </a>
+              )}
+            </div>
+          )}
+          {app.portal_link && (
+            <div className="mb-4">
+              <span className="font-medium text-neutralDark">Application URL:</span>
+              {editMode ? (
+                <input
+                  type="url"
+                  value={app.portal_link || ''}
+                  onChange={(e) => updateAppField('portal_link', e.target.value)}
+                  className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                  placeholder="e.g., https://apply.university.edu"
+                />
+              ) : (
+                <a
+                  href={app.portal_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-secondary hover:underline"
+                >
+                  Application URL
+                </a>
+              )}
+            </div>
+          )}
+          <h3 className="text-xl font-bold mb-4 text-neutralDark">Important Dates</h3>
+          <ul className="mb-6">
+            {importantDates.map((date) => (
+              <li key={date.id} className="mb-2">
+                {editMode ? (
                   <>
-                    <label htmlFor={`req-criteria-${req.id}`} className="text-neutralDark mr-2">Criteria Type</label>
-                    <select
-                      id={`req-criteria-${req.id}`}
-                      value={req.criteria_type || ''}
-                      onChange={(e) => updateRequirement(req.id, 'criteria_type', e.target.value || null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
-                    >
-                      <option value="">Select Criteria</option>
-                      <option>Words</option>
-                      <option>Pages</option>
-                      <option>Characters</option>
-                    </select>
-                    <label htmlFor={`req-value-${req.id}`} className="text-neutralDark mr-2">Criteria Value</label>
+                    <label className="block text-neutralDark mb-1">Date Name</label>
                     <input
-                      id={`req-value-${req.id}`}
-                      type="number"
-                      value={req.criteria_value || ''}
-                      onChange={(e) => updateRequirement(req.id, 'criteria_value', e.target.value ? parseInt(e.target.value) : null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
-                      placeholder="Value"
+                      type="text"
+                      value={date.name}
+                      onChange={(e) => updateImportantDate(date.id, 'name', e.target.value)}
+                      className="p-1 border border-gray-300 rounded w-full mb-2"
                     />
-                    <label htmlFor={`req-char-count-${req.id}`} className="text-neutralDark mr-2">Character Count</label>
+                    <label className="block text-neutralDark mb-1">Date</label>
                     <input
-                      id={`req-char-count-${req.id}`}
-                      type="number"
-                      value={req.char_count || ''}
-                      onChange={(e) => updateRequirement(req.id, 'char_count', e.target.value ? parseInt(e.target.value) : null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
-                      placeholder="Char Count"
+                      type="date"
+                      value={date.date}
+                      onChange={(e) => updateImportantDate(date.id, 'date', e.target.value)}
+                      className="p-1 border border-gray-300 rounded w-full"
                     />
                   </>
+                ) : (
+                  `${date.name}: ${date.date}`
                 )}
-                {req.name === 'Transcripts' && (
-                  <>
-                    <label htmlFor={`req-type-${req.id}`} className="text-neutralDark mr-2">Transcript Type</label>
+              </li>
+            ))}
+            {editMode && (
+              <button onClick={addImportantDate} className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm">
+                Add Important Date
+              </button>
+            )}
+          </ul>
+        </div>
+      </div>
+
+      <h3 className="text-xl font-bold mb-4 text-neutralDark">Requirements</h3>
+      <table className="w-full mb-6 border-collapse">
+        <thead>
+          <tr className="bg-neutralLight">
+            <th className="p-2 text-left text-neutralDark">S/N</th>
+            <th className="p-2 text-left text-neutralDark">Requirement</th>
+            <th className="p-2 text-left text-neutralDark">Detail/Description</th>
+            <th className="p-2 text-left text-neutralDark">Status</th>
+            {editMode && <th className="p-2 text-left text-neutralDark">Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {requirements.map((req, index) => (
+            <tr key={req.id} className="border-b">
+              <td className="p-2">{index + 1}</td>
+              <td className="p-2">{req.name}</td>
+              <td className="p-2">{getRequirementDetails(req)}</td>
+              <td className="p-2">
+                <input
+                  type="checkbox"
+                  checked={req.is_completed}
+                  onChange={(e) => toggleRequirement(req.id, e.target.checked)}
+                  disabled={editMode}
+                />
+              </td>
+              {editMode && (
+                <td className="p-2">
+                  {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(req.name) && (
+                    <div className="flex flex-col space-y-2">
+                      <select
+                        value={req.criteria_type || ''}
+                        onChange={(e) => updateRequirement(req.id, 'criteria_type', e.target.value || null)}
+                        className="p-1 border border-gray-300 rounded"
+                        required
+                      >
+                        <option value="">Select Criteria</option>
+                        <option>Words</option>
+                        <option>Pages</option>
+                        <option>Characters</option>
+                        <option>Unspecified</option>
+                      </select>
+                      {req.criteria_type !== 'Unspecified' && (
+                        <input
+                          type="number"
+                          value={req.criteria_value || ''}
+                          onChange={(e) => updateRequirement(req.id, 'criteria_value', e.target.value ? parseInt(e.target.value) : null)}
+                          className="p-1 border border-gray-300 rounded"
+                          placeholder="Value"
+                          required
+                        />
+                      )}
+                    </div>
+                  )}
+                  {req.name === 'Transcripts' && (
                     <select
-                      id={`req-type-${req.id}`}
                       value={req.type || ''}
                       onChange={(e) => updateRequirement(req.id, 'type', e.target.value || null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
+                      className="p-1 border border-gray-300 rounded"
                     >
                       <option value="">Select Type</option>
                       <option>Official</option>
                       <option>Unofficial</option>
                       <option>Evaluated</option>
                     </select>
-                  </>
-                )}
-                {req.name === 'GPA/Class of Degree' && (
-                  <>
-                    <label htmlFor={`req-conversion-${req.id}`} className="text-neutralDark mr-2">Conversion Details</label>
+                  )}
+                  {req.name === 'GPA/Class of Degree' && (
                     <input
-                      id={`req-conversion-${req.id}`}
                       type="text"
                       value={req.conversion || ''}
                       onChange={(e) => updateRequirement(req.id, 'conversion', e.target.value || null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
+                      className="p-1 border border-gray-300 rounded"
                       placeholder="e.g., 3.5/4.0"
+                      required
                     />
-                  </>
-                )}
-                {req.name === 'Standardized Test Scores (GRE)' && (
-                  <>
-                    <label htmlFor={`req-details-${req.id}`} className="text-neutralDark mr-2">Test Requirements</label>
+                  )}
+                  {req.name === 'Standardized Test Scores (GRE)' && (
                     <input
-                      id={`req-details-${req.id}`}
                       type="text"
                       value={req.min_score || ''}
                       onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value || null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
+                      className="p-1 border border-gray-300 rounded"
                       placeholder="e.g., 160 Verbal, 160 Quantitative"
+                      required
                     />
-                  </>
-                )}
-                {req.name === 'English Proficiency Test Scores' && (
-                  <>
-                    <label className="text-neutralDark mr-2">
-                      <input
-                        type="checkbox"
-                        checked={req.waived || false}
-                        onChange={(e) => updateRequirement(req.id, 'waived', e.target.checked)}
-                      />{' '}
-                      Waived
-                    </label>
-                    {!req.waived && (
-                      <>
-                        <label htmlFor={`req-test-type-${req.id}`} className="text-neutralDark mr-2">Test Type</label>
+                  )}
+                  {req.name === 'English Proficiency Test Scores' && (
+                    <div className="flex flex-col space-y-2">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={req.waived || false}
+                          onChange={(e) => updateRequirement(req.id, 'waived', e.target.checked)}
+                        />{' '}
+                        Waived
+                      </label>
+                      {!req.waived && (
                         <select
-                          id={`req-test-type-${req.id}`}
                           value={req.test_type || ''}
                           onChange={(e) => updateRequirement(req.id, 'test_type', e.target.value || null)}
-                          className="p-1 border border-gray-300 rounded mr-2"
+                          className="p-1 border border-gray-300 rounded"
                         >
                           <option value="">Select Test</option>
                           <option>TOEFL</option>
@@ -379,111 +514,19 @@ export default function ApplicationDetail({ session }) {
                           <option>Duolingo</option>
                           <option>Letter from School</option>
                         </select>
-                      </>
-                    )}
-                  </>
-                )}
-                {req.name === 'Credential Evaluation' && (
-                  <>
-                    <label htmlFor={`req-details-${req.id}`} className="text-neutralDark mr-2">Evaluation Details</label>
+                      )}
+                    </div>
+                  )}
+                  {req.name === 'Credential Evaluation' && (
                     <input
-                      id={`req-details-${req.id}`}
                       type="text"
                       value={req.min_score || ''}
                       onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value || null)}
-                      className="p-1 border border-gray-300 rounded mr-2"
+                      className="p-1 border border-gray-300 rounded"
                       placeholder="e.g., WES Evaluation"
                     />
-                  </>
-                )}
-                <button onClick={() => deleteRequirement(req.id)} className="text-red-500">
-                  Delete
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-        {editMode && (
-          <div className="mt-4">
-            <label htmlFor="new-req" className="block text-neutralDark mb-1">New Requirement</label>
-            <div className="flex">
-              <input id="new-req" type="text" placeholder="Enter requirement" className="p-1 border border-gray-300 rounded mr-2 flex-1" />
-              <button onClick={() => addRequirement(document.getElementById('new-req').value)} className="bg-secondary text-white py-1 px-3 rounded">
-                Add
-              </button>
-            </div>
-          </div>
-        )}
-      </ul>
-
-      <h3 className="text-2xl font-bold mb-4 text-neutralDark">Recommenders</h3>
-      <table className="w-full mb-6 border-collapse">
-        <thead>
-          <tr className="bg-neutralLight">
-            <th className="p-2 text-left text-neutralDark">Name</th>
-            <th className="p-2 text-left text-neutralDark">Type</th>
-            <th className="p-2 text-left text-neutralDark">Email</th>
-            <th className="p-2 text-left text-neutralDark">Status</th>
-            {editMode && <th className="p-2 text-left text-neutralDark">Actions</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {recommenders.map((rec) => (
-            <tr key={rec.id} className="border-b">
-              <td className="p-2">
-                <label htmlFor={`rec-name-${rec.id}`} className="block text-neutralDark mb-1">Recommender Name</label>
-                <input
-                  id={`rec-name-${rec.id}`}
-                  type="text"
-                  value={rec.name}
-                  onChange={(e) => updateRecommender(rec.id, 'name', e.target.value)}
-                  disabled={rec.status === 'Unidentified' || !editMode}
-                  className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
-                />
-              </td>
-              <td className="p-2">
-                <label htmlFor={`rec-type-${rec.id}`} className="block text-neutralDark mb-1">Recommender Type</label>
-                <select
-                  id={`rec-type-${rec.id}`}
-                  value={rec.type || ''}
-                  onChange={(e) => updateRecommender(rec.id, 'type', e.target.value || null)}
-                  disabled={rec.status === 'Unidentified' || !editMode}
-                  className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
-                >
-                  <option value="">Select Type</option>
-                  <option>Academic</option>
-                  <option>Professional</option>
-                </select>
-              </td>
-              <td className="p-2">
-                <label htmlFor={`rec-email-${rec.id}`} className="block text-neutralDark mb-1">Email</label>
-                <input
-                  id={`rec-email-${rec.id}`}
-                  type="email"
-                  value={rec.email || ''}
-                  onChange={(e) => updateRecommender(rec.id, 'email', e.target.value || null)}
-                  disabled={rec.status === 'Unidentified' || !editMode}
-                  className="p-1 border border-gray-300 rounded w-full disabled:bg-gray-100"
-                />
-              </td>
-              <td className="p-2">
-                <label htmlFor={`rec-status-${rec.id}`} className="block text-neutralDark mb-1">Status</label>
-                <select
-                  id={`rec-status-${rec.id}`}
-                  value={rec.status}
-                  onChange={(e) => updateRecommender(rec.id, 'status', e.target.value)}
-                  className="p-1 border border-gray-300 rounded w-full"
-                >
-                  <option>Unidentified</option>
-                  <option>Identified</option>
-                  <option>Contacted</option>
-                  <option>In Progress</option>
-                  <option>Submitted</option>
-                </select>
-              </td>
-              {editMode && (
-                <td className="p-2">
-                  <button onClick={() => deleteRecommender(rec.id)} className="text-red-500">
+                  )}
+                  <button onClick={() => deleteRequirement(req.id)} className="text-red-500 ml-2">
                     Delete
                   </button>
                 </td>
@@ -492,42 +535,222 @@ export default function ApplicationDetail({ session }) {
           ))}
         </tbody>
       </table>
-
-      <h3 className="text-2xl font-bold mb-4 text-neutralDark">Links</h3>
-      <div className="mb-4">
-        <label htmlFor="program-link" className="font-medium text-neutralDark">Program Link:</label>
-        {editMode ? (
-          <input
-            id="program-link"
-            type="url"
-            value={app.program_link || ''}
-            onChange={(e) => updateAppField('program_link', e.target.value)}
-            className="ml-2 p-1 border border-gray-300 rounded w-1/2"
-            placeholder="e.g., https://university.edu/program"
-          />
-        ) : (
-          <a href={app.program_link} target="_blank" rel="noopener noreferrer" className="ml-2 text-secondary hover:underline">
-            {app.program_link || 'None'}
-          </a>
-        )}
-      </div>
-      <div>
-        <label htmlFor="portal-link" className="font-medium text-neutralDark">Portal Link:</label>
-        {editMode ? (
-          <input
-            id="portal-link"
-            type="url"
-            value={app.portal_link || ''}
-            onChange={(e) => updateAppField('portal_link', e.target.value)}
-            className="ml-2 p-1 border border-gray-300 rounded w-1/2"
-            placeholder="e.g., https://apply.university.edu"
-          />
-        ) : (
-          <a href={app.portal_link} target="_blank" rel="noopener noreferrer" className="ml-2 text-secondary hover:underline">
-            {app.portal_link || 'None'}
-          </a>
-        )}
-      </div>
+      {editMode && (
+        <div className="mb-6">
+          <label className="block text-neutralDark mb-1">Add Requirement</label>
+          <div className="flex flex-col space-y-2 w-full md:w-1/3">
+            <select
+              value={newRequirement.name}
+              onChange={(e) => setNewRequirement({ ...newRequirement, name: e.target.value, criteria_type: null, criteria_value: null, min_score: null, test_type: null, waived: false, conversion: null, type: null, num_recommenders: '' })}
+              className="p-1 border border-gray-300 rounded"
+              required
+            >
+              <option value="">Select Requirement</option>
+              {requirementOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && (
+              <div className="flex flex-col space-y-2">
+                <select
+                  value={newRequirement.criteria_type || ''}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, criteria_type: e.target.value, criteria_value: e.target.value === 'Unspecified' ? null : newRequirement.criteria_value })}
+                  className="p-1 border border-gray-300 rounded"
+                  required
+                >
+                  <option value="">Select Criteria</option>
+                  <option>Words</option>
+                  <option>Pages</option>
+                  <option>Characters</option>
+                  <option>Unspecified</option>
+                </select>
+                {newRequirement.criteria_type !== 'Unspecified' && (
+                  <input
+                    type="number"
+                    value={newRequirement.criteria_value || ''}
+                    onChange={(e) => setNewRequirement({ ...newRequirement, criteria_value: e.target.value })}
+                    className="p-1 border border-gray-300 rounded"
+                    placeholder="Value"
+                    required
+                  />
+                )}
+              </div>
+            )}
+            {newRequirement.name === 'Transcripts' && (
+              <select
+                value={newRequirement.type || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, type: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+              >
+                <option value="">Select Type</option>
+                <option>Official</option>
+                <option>Unofficial</option>
+                <option>Evaluated</option>
+              </select>
+            )}
+            {newRequirement.name === 'GPA/Class of Degree' && (
+              <input
+                type="text"
+                value={newRequirement.conversion || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, conversion: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="e.g., 3.5/4.0"
+                required
+              />
+            )}
+            {newRequirement.name === 'Standardized Test Scores (GRE)' && (
+              <input
+                type="text"
+                value={newRequirement.min_score || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="e.g., 160 Verbal, 160 Quantitative"
+                required
+              />
+            )}
+            {newRequirement.name === 'English Proficiency Test Scores' && (
+              <div className="flex flex-col space-y-2">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={newRequirement.waived || false}
+                    onChange={(e) => setNewRequirement({ ...newRequirement, waived: e.target.checked })}
+                  />{' '}
+                  Waived
+                </label>
+                {!newRequirement.waived && (
+                  <select
+                    value={newRequirement.test_type || ''}
+                    onChange={(e) => setNewRequirement({ ...newRequirement, test_type: e.target.value })}
+                    className="p-1 border border-gray-300 rounded"
+                  >
+                    <option value="">Select Test</option>
+                    <option>TOEFL</option>
+                    <option>IELTS</option>
+                    <option>Duolingo</option>
+                    <option>Letter from School</option>
+                  </select>
+                )}
+              </div>
+            )}
+            {newRequirement.name === 'Credential Evaluation' && (
+              <input
+                type="text"
+                value={newRequirement.min_score || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="e.g., WES Evaluation"
+              />
+            )}
+            {newRequirement.name === 'Recommenders' && (
+              <input
+                type="number"
+                value={newRequirement.num_recommenders || ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, num_recommenders: e.target.value })}
+                className="p-1 border border-gray-300 rounded"
+                placeholder="Number of recommenders"
+                min="1"
+                required
+              />
+            )}
+            {newRequirement.name && (
+              <button
+                onClick={addRequirement}
+                className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
+                disabled={
+                  !newRequirement.name ||
+                  (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
+                  (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value) ||
+                  (newRequirement.name === 'GPA/Class of Degree' && !newRequirement.conversion) ||
+                  (newRequirement.name === 'Standardized Test Scores (GRE)' && !newRequirement.min_score) ||
+                  (newRequirement.name === 'Application Fee' && !app.application_fee && !app.fee_waived) ||
+                  (newRequirement.name === 'Recommenders' && !newRequirement.num_recommenders)
+                }
+              >
+                Add
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {recommenders.length > 0 && (
+        <>
+          <h3 className="text-xl font-bold mb-4 text-neutralDark">Recommenders</h3>
+          <table className="w-full mb-6 border-collapse">
+            <thead>
+              <tr className="bg-neutralLight">
+                <th className="p-2 text-left text-neutralDark">S/N</th>
+                <th className="p-2 text-left text-neutralDark">Name</th>
+                <th className="p-2 text-left text-neutralDark">Email</th>
+                <th className="p-2 text-left text-neutralDark">Type</th>
+                <th className="p-2 text-left text-neutralDark">Status</th>
+                {editMode && <th className="p-2 text-left text-neutralDark">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {recommenders.map((rec, index) => (
+                <tr key={rec.id} className="border-b">
+                  <td className="p-2">{index + 1}</td>
+                  <td className="p-2">
+                    <input
+                      type="text"
+                      value={rec.name || ''}
+                      onChange={(e) => updateRecommender(rec.id, 'name', e.target.value || null)}
+                      disabled={rec.status === 'Unidentified' && !editMode}
+                      className={`p-1 border border-gray-300 rounded w-full ${rec.status === 'Unidentified' && !editMode ? 'bg-gray-200' : ''}`}
+                      placeholder="Enter name"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <input
+                      type="email"
+                      value={rec.email || ''}
+                      onChange={(e) => updateRecommender(rec.id, 'email', e.target.value || null)}
+                      disabled={rec.status === 'Unidentified' && !editMode}
+                      className={`p-1 border border-gray-300 rounded w-full ${rec.status === 'Unidentified' && !editMode ? 'bg-gray-200' : ''}`}
+                      placeholder="Enter email"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <select
+                      value={rec.type || ''}
+                      onChange={(e) => updateRecommender(rec.id, 'type', e.target.value || null)}
+                      disabled={rec.status === 'Unidentified' && !editMode}
+                      className={`p-1 border border-gray-300 rounded w-full ${rec.status === 'Unidentified' && !editMode ? 'bg-gray-200' : ''}`}
+                    >
+                      <option value="">Select Type</option>
+                      <option>Academic</option>
+                      <option>Professional</option>
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <select
+                      value={rec.status}
+                      onChange={(e) => updateRecommender(rec.id, 'status', e.target.value)}
+                      className="p-1 border border-gray-300 rounded w-full"
+                    >
+                      <option>Unidentified</option>
+                      <option>Identified</option>
+                      <option>Contacted</option>
+                      <option>In Progress</option>
+                      <option>Submitted</option>
+                    </select>
+                  </td>
+                  {editMode && (
+                    <td className="p-2">
+                      <button onClick={() => deleteRecommender(rec.id)} className="text-red-500">
+                        Delete
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }
