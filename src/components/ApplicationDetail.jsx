@@ -282,7 +282,7 @@ export default function ApplicationDetail({ session }) {
   const saveRecommender = async () => {
     if (!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status) return;
 
-    if (newRecommender.id) {
+    if (newRecommender.id && !newRecommender.id.startsWith('temp-')) {
       // Update existing recommender
       const { error } = await supabase.from('recommenders').update({
         name: newRecommender.name,
@@ -299,8 +299,8 @@ export default function ApplicationDetail({ session }) {
       ));
     } else {
       // Add new recommender
-      const unidentifiedIndex = recommenders.findIndex((r) => r.status === 'Unidentified');
-      if (unidentifiedIndex === -1) return; // No empty rows available
+      const unidentifiedIndex = recommenders.findIndex((r) => r.id === newRecommender.id);
+      if (unidentifiedIndex === -1) return; // No matching row
       const { data, error } = await supabase.from('recommenders').insert([{
         application_id: id,
         name: newRecommender.name,
@@ -321,7 +321,13 @@ export default function ApplicationDetail({ session }) {
   };
 
   const editRecommender = (recommender) => {
-    setNewRecommender({ ...recommender });
+    setNewRecommender({
+      id: recommender.id,
+      name: recommender.name || '',
+      email: recommender.email || '',
+      type: recommender.type || '',
+      status: recommender.status === 'Unidentified' ? 'Identified' : recommender.status,
+    });
   };
 
   const deleteRecommender = async (recId) => {
@@ -986,7 +992,7 @@ export default function ApplicationDetail({ session }) {
                 <th className="p-2 text-left text-neutralDark">Email</th>
                 <th className="p-2 text-left text-neutralDark">Type</th>
                 <th className="p-2 text-left text-neutralDark">Status</th>
-                {!editMode && <th className="p-2 text-left text-neutralDark">Actions</th>}
+                {!editMode && <th className="p-2 text-left text-neutralDark">Action</th>}
               </tr>
             </thead>
             <tbody>
@@ -999,7 +1005,9 @@ export default function ApplicationDetail({ session }) {
                   <td className="p-2">{rec.status}</td>
                   {!editMode && (
                     <td className="p-2 flex space-x-2">
-                      {rec.status !== 'Unidentified' && (
+                      {rec.status === 'Unidentified' ? (
+                        <button onClick={() => editRecommender(rec)} className="text-blue-500">Add</button>
+                      ) : (
                         <>
                           <button onClick={() => editRecommender(rec)} className="text-blue-500">Edit</button>
                           <button onClick={() => deleteRecommender(rec.id)} className="text-red-500">Delete</button>
@@ -1011,64 +1019,53 @@ export default function ApplicationDetail({ session }) {
               ))}
             </tbody>
           </table>
-          {!editMode && (
-            <>
-              <button
-                onClick={() => setNewRecommender({ id: null, name: '', email: '', type: '', status: 'Identified' })}
-                className="bg-secondary text-white py-1 px-3 rounded mb-4 text-sm disabled:bg-gray-300"
-                disabled={recommenders.every((r) => r.status !== 'Unidentified')}
+          {!editMode && newRecommender && (
+            <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 mb-6">
+              <input
+                type="text"
+                value={newRecommender.name || ''}
+                onChange={(e) => setNewRecommender({ ...newRecommender, name: e.target.value })}
+                className="p-1 border border-gray-300 rounded flex-1"
+                placeholder="Enter name"
+                required
+              />
+              <input
+                type="email"
+                value={newRecommender.email || ''}
+                onChange={(e) => setNewRecommender({ ...newRecommender, email: e.target.value })}
+                className="p-1 border border-gray-300 rounded flex-1"
+                placeholder="Enter email"
+                required
+              />
+              <select
+                value={newRecommender.type || ''}
+                onChange={(e) => setNewRecommender({ ...newRecommender, type: e.target.value })}
+                className="p-1 border border-gray-300 rounded flex-1"
+                required
               >
-                Add Reference
+                <option value="">Select Type</option>
+                <option>Academic</option>
+                <option>Professional</option>
+              </select>
+              <select
+                value={newRecommender.status || 'Identified'}
+                onChange={(e) => setNewRecommender({ ...newRecommender, status: e.target.value })}
+                className="p-1 border border-gray-300 rounded flex-1"
+                required
+              >
+                <option value="Identified">Identified</option>
+                <option>Contacted</option>
+                <option>In Progress</option>
+                <option>Submitted</option>
+              </select>
+              <button
+                onClick={saveRecommender}
+                className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
+                disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status}
+              >
+                Save
               </button>
-              {newRecommender && (
-                <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 mb-6">
-                  <input
-                    type="text"
-                    value={newRecommender.name || ''}
-                    onChange={(e) => setNewRecommender({ ...newRecommender, name: e.target.value })}
-                    className="p-1 border border-gray-300 rounded flex-1"
-                    placeholder="Enter name"
-                    required
-                  />
-                  <input
-                    type="email"
-                    value={newRecommender.email || ''}
-                    onChange={(e) => setNewRecommender({ ...newRecommender, email: e.target.value })}
-                    className="p-1 border border-gray-300 rounded flex-1"
-                    placeholder="Enter email"
-                    required
-                  />
-                  <select
-                    value={newRecommender.type || ''}
-                    onChange={(e) => setNewRecommender({ ...newRecommender, type: e.target.value })}
-                    className="p-1 border border-gray-300 rounded flex-1"
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option>Academic</option>
-                    <option>Professional</option>
-                  </select>
-                  <select
-                    value={newRecommender.status || 'Identified'}
-                    onChange={(e) => setNewRecommender({ ...newRecommender, status: e.target.value })}
-                    className="p-1 border border-gray-300 rounded flex-1"
-                    required
-                  >
-                    <option value="Identified">Identified</option>
-                    <option>Contacted</option>
-                    <option>In Progress</option>
-                    <option>Submitted</option>
-                  </select>
-                  <button
-                    onClick={saveRecommender}
-                    className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300"
-                    disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status}
-                  >
-                    Save
-                  </button>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </>
       )}
