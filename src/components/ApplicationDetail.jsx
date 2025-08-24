@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SkeletonDetail } from './SkeletonLoader';
-import { FaPen, FaTrash } from 'react-icons/fa';
+import { FaPen, FaTrash, FaEllipsisV } from 'react-icons/fa';
 import debounce from 'lodash/debounce';
 
 export default function ApplicationDetail({ session }) {
@@ -36,6 +36,9 @@ export default function ApplicationDetail({ session }) {
   const [appChanges, setAppChanges] = useState({});
   const [pendingDateChanges, setPendingDateChanges] = useState({});
   const [editingDateId, setEditingDateId] = useState(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [password, setPassword] = useState('');
   const inFlightWrite = useRef(false);
 
   useEffect(() => {
@@ -56,11 +59,9 @@ export default function ApplicationDetail({ session }) {
     setImportantDates(dateData || []);
 
     const { data: reqData } = await supabase.from('requirements').select('*').eq('application_id', id);
-    console.log('Fetched requirements:', reqData); // Debug log
     setRequirements(reqData || []);
 
     const { data: recData } = await supabase.from('recommenders').select('*').eq('application_id', id).order('id');
-    console.log('Fetched recommenders:', recData); // Debug log
     const recommenderReq = reqData?.find((req) => req.name === 'Recommenders');
     const numRecommenders = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
     const paddedRecommenders = recData || [];
@@ -97,7 +98,6 @@ export default function ApplicationDetail({ session }) {
   const totalRecs = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
   
   const total = totalReqs + totalRecs;
-  console.log({ completedReqs, totalReqs, recommenderScore, totalRecs, total }); // Debug log
   if (completedReqs === 0 && recommenderScore === 0) return 0;
   return total > 0 ? Math.round((completedReqs + recommenderScore) / total * 100) : 0;
 };
@@ -580,6 +580,37 @@ export default function ApplicationDetail({ session }) {
     toast.success('Recommender deleted');
   };
 
+  const deleteApplication = async () => {
+    if (password !== session.user.email) { // Simple password check, replace with a more secure method
+        toast.error('Incorrect password');
+        return;
+    }
+    
+    setButtonLoading((prev) => ({ ...prev, deleteApp: true }));
+    try {
+        // Delete related records first
+        await supabase.from('important_dates').delete().eq('application_id', id);
+        await supabase.from('requirements').delete().eq('application_id', id);
+        await supabase.from('recommenders').delete().eq('application_id', id);
+        
+        const { error } = await supabase.from('applications').delete().eq('id', id);
+
+        if (error) {
+            toast.error('Failed to delete application');
+            console.error(error);
+        } else {
+            toast.success('Application deleted successfully!');
+            navigate('/');
+        }
+    } catch (error) {
+        toast.error('An unexpected error occurred during deletion.');
+        console.error(error);
+    } finally {
+        setButtonLoading((prev) => ({ ...prev, deleteApp: false }));
+        setShowDeleteModal(false);
+    }
+  };
+
   const getRequirementDetails = (req) => {
     const details = [];
     if (req.criteria_type && req.criteria_value) details.push(`${req.criteria_value} ${req.criteria_type}`);
@@ -627,10 +658,67 @@ export default function ApplicationDetail({ session }) {
       </nav>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-primary">{app.program}</h2>
-        <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded text-sm md:text-base">
-          {editMode ? 'View Mode' : 'Edit Mode'}
-        </button>
+        <div className="hidden md:flex items-center space-x-2">
+          <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded text-sm md:text-base">
+            {editMode ? 'View Mode' : 'Edit Mode'}
+          </button>
+          <button onClick={() => setShowDeleteModal(true)} className="bg-red-500 text-white py-2 px-4 rounded text-sm md:text-base hover:bg-red-600">
+            Delete
+          </button>
+        </div>
+        <div className="md:hidden relative">
+          <button onClick={() => setShowOptions(!showOptions)} className="text-gray-600">
+            <FaEllipsisV size={24} />
+          </button>
+          {showOptions && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+              <button onClick={() => { setEditMode(!editMode); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
+                {editMode ? 'View Mode' : 'Edit Mode'}
+              </button>
+              <button onClick={() => { setShowDeleteModal(true); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100">
+                Delete Application
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="my-modal">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3 text-center">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Confirm Deletion</h3>
+              <div className="mt-2 px-7 py-3">
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete this application? This action cannot be undone. Please enter your account password to confirm.
+                </p>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-4 w-full p-2 border border-gray-300 rounded"
+                  placeholder="Enter your password"
+                />
+              </div>
+              <div className="items-center px-4 py-3">
+                <button
+                  onClick={deleteApplication}
+                  className="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={buttonLoading.deleteApp || !password}
+                >
+                  {buttonLoading.deleteApp ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Left Column: Core Info */}
         <div>
