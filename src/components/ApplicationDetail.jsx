@@ -22,6 +22,9 @@ export default function ApplicationDetail({ session }) {
     conversion: null,
     type: null,
     num_recommenders: '',
+    application_fee: '',
+    fee_waived: false,
+    fee_waiver_details: '',
   });
 
   useEffect(() => {
@@ -73,7 +76,7 @@ export default function ApplicationDetail({ session }) {
     const { error } = await supabase.from('recommenders').update({ [field]: value }).eq('id', recId);
     if (error) console.error(error);
     else {
-      setRecommenders(recommenders.map((r) => (r.id === recId ? { ...r, [field]: value } : r)));
+      setRecommenders(recommenders.map((r) => (r.id === reqId ? { ...r, [field]: value } : r)));
       if (field === 'status') updateProgress();
     }
   };
@@ -98,14 +101,21 @@ export default function ApplicationDetail({ session }) {
   };
 
   const addRequirement = async () => {
-    const { name, criteria_type, criteria_value, min_score, test_type, waived, conversion, type, num_recommenders } = newRequirement;
+    const { name, criteria_type, criteria_value, min_score, test_type, waived, conversion, type, num_recommenders, application_fee, fee_waived, fee_waiver_details } = newRequirement;
     if (!name) return;
     if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(name) && !criteria_type) return;
     if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(name) && criteria_type !== 'Unspecified' && !criteria_value) return;
     if (name === 'GPA/Class of Degree' && !conversion) return;
     if (name === 'Standardized Test Scores (GRE)' && !min_score) return;
-    if (name === 'Application Fee' && !app.application_fee && !app.fee_waived) return;
+    if (name === 'Application Fee' && !fee_waived && !application_fee) return;
+    if (name === 'Application Fee' && fee_waived && !fee_waiver_details) return;
     if (name === 'Recommenders' && !num_recommenders) return;
+
+    if (name === 'Application Fee') {
+      await updateAppField('application_fee', fee_waived ? '0' : application_fee);
+      await updateAppField('fee_waived', fee_waived);
+      await updateAppField('fee_waiver_details', fee_waived ? fee_waiver_details : null);
+    }
 
     const newReq = {
       application_id: id,
@@ -145,6 +155,9 @@ export default function ApplicationDetail({ session }) {
         conversion: null,
         type: null,
         num_recommenders: '',
+        application_fee: '',
+        fee_waived: false,
+        fee_waiver_details: '',
       });
       updateProgress();
     }
@@ -183,6 +196,7 @@ export default function ApplicationDetail({ session }) {
     if (req.conversion) details.push(`Conversion: ${req.conversion}`);
     if (req.min_score && (req.name === 'Standardized Test Scores (GRE)' || req.name === 'Credential Evaluation')) details.push(req.min_score);
     if (req.type) details.push(req.type);
+    if (req.name === 'Application Fee') details.push(app.fee_waived ? `Waived (${app.fee_waiver_details})` : app.application_fee);
     return details.join(', ') || 'None';
   };
 
@@ -254,7 +268,10 @@ export default function ApplicationDetail({ session }) {
                 <input
                   type="text"
                   value={app.application_fee}
-                  onChange={(e) => updateAppField('application_fee', e.target.value)}
+                  onChange={(e) => {
+                    updateAppField('application_fee', e.target.value);
+                    setNewRequirement({ ...newRequirement, application_fee: e.target.value });
+                  }}
                   className="ml-2 p-1 border border-gray-300 rounded w-1/2"
                   placeholder="e.g., $100 or 0"
                   disabled={app.fee_waived}
@@ -264,7 +281,11 @@ export default function ApplicationDetail({ session }) {
                   <input
                     type="checkbox"
                     checked={app.fee_waived}
-                    onChange={() => updateAppField('fee_waived', !app.fee_waived)}
+                    onChange={() => {
+                      const newWaived = !app.fee_waived;
+                      updateAppField('fee_waived', newWaived);
+                      setNewRequirement({ ...newRequirement, fee_waived: newWaived });
+                    }}
                   />{' '}
                   Fee Waived
                 </label>
@@ -274,7 +295,10 @@ export default function ApplicationDetail({ session }) {
                     <input
                       type="text"
                       value={app.fee_waiver_details || ''}
-                      onChange={(e) => updateAppField('fee_waiver_details', e.target.value)}
+                      onChange={(e) => {
+                        updateAppField('fee_waiver_details', e.target.value);
+                        setNewRequirement({ ...newRequirement, fee_waiver_details: e.target.value });
+                      }}
                       className="ml-2 p-1 border border-gray-300 rounded w-3/4"
                       placeholder="e.g., Financial hardship waiver"
                     />
@@ -526,6 +550,47 @@ export default function ApplicationDetail({ session }) {
                       placeholder="e.g., WES Evaluation"
                     />
                   )}
+                  {req.name === 'Application Fee' && (
+                    <div className="flex flex-col space-y-2">
+                      <input
+                        type="text"
+                        value={app.application_fee}
+                        onChange={(e) => {
+                          updateAppField('application_fee', e.target.value);
+                          setNewRequirement({ ...newRequirement, application_fee: e.target.value });
+                        }}
+                        className="p-1 border border-gray-300 rounded"
+                        placeholder="e.g., $100 or 0"
+                        disabled={app.fee_waived}
+                        required={!app.fee_waived}
+                      />
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={app.fee_waived}
+                          onChange={() => {
+                            const newWaived = !app.fee_waived;
+                            updateAppField('fee_waived', newWaived);
+                            setNewRequirement({ ...newRequirement, fee_waived: newWaived });
+                          }}
+                        />{' '}
+                        Fee Waived
+                      </label>
+                      {app.fee_waived && (
+                        <input
+                          type="text"
+                          value={app.fee_waiver_details || ''}
+                          onChange={(e) => {
+                            updateAppField('fee_waiver_details', e.target.value);
+                            setNewRequirement({ ...newRequirement, fee_waiver_details: e.target.value });
+                          }}
+                          className="p-1 border border-gray-300 rounded"
+                          placeholder="e.g., Financial hardship waiver"
+                          required
+                        />
+                      )}
+                    </div>
+                  )}
                   <button onClick={() => deleteRequirement(req.id)} className="text-red-500 ml-2">
                     Delete
                   </button>
@@ -538,11 +603,11 @@ export default function ApplicationDetail({ session }) {
       {editMode && (
         <div className="mb-6">
           <label className="block text-neutralDark mb-1">Add Requirement</label>
-          <div className="flex flex-col space-y-2 w-full md:w-1/3">
+          <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 w-full md:w-3/4">
             <select
               value={newRequirement.name}
-              onChange={(e) => setNewRequirement({ ...newRequirement, name: e.target.value, criteria_type: null, criteria_value: null, min_score: null, test_type: null, waived: false, conversion: null, type: null, num_recommenders: '' })}
-              className="p-1 border border-gray-300 rounded"
+              onChange={(e) => setNewRequirement({ ...newRequirement, name: e.target.value, criteria_type: null, criteria_value: null, min_score: null, test_type: null, waived: false, conversion: null, type: null, num_recommenders: '', application_fee: app.application_fee, fee_waived: app.fee_waived, fee_waiver_details: app.fee_waiver_details })}
+              className="p-1 border border-gray-300 rounded flex-1"
               required
             >
               <option value="">Select Requirement</option>
@@ -553,11 +618,11 @@ export default function ApplicationDetail({ session }) {
               ))}
             </select>
             {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && (
-              <div className="flex flex-col space-y-2">
+              <>
                 <select
                   value={newRequirement.criteria_type || ''}
                   onChange={(e) => setNewRequirement({ ...newRequirement, criteria_type: e.target.value, criteria_value: e.target.value === 'Unspecified' ? null : newRequirement.criteria_value })}
-                  className="p-1 border border-gray-300 rounded"
+                  className="p-1 border border-gray-300 rounded flex-1"
                   required
                 >
                   <option value="">Select Criteria</option>
@@ -571,18 +636,18 @@ export default function ApplicationDetail({ session }) {
                     type="number"
                     value={newRequirement.criteria_value || ''}
                     onChange={(e) => setNewRequirement({ ...newRequirement, criteria_value: e.target.value })}
-                    className="p-1 border border-gray-300 rounded"
+                    className="p-1 border border-gray-300 rounded flex-1"
                     placeholder="Value"
                     required
                   />
                 )}
-              </div>
+              </>
             )}
             {newRequirement.name === 'Transcripts' && (
               <select
                 value={newRequirement.type || ''}
                 onChange={(e) => setNewRequirement({ ...newRequirement, type: e.target.value })}
-                className="p-1 border border-gray-300 rounded"
+                className="p-1 border border-gray-300 rounded flex-1"
               >
                 <option value="">Select Type</option>
                 <option>Official</option>
@@ -595,7 +660,7 @@ export default function ApplicationDetail({ session }) {
                 type="text"
                 value={newRequirement.conversion || ''}
                 onChange={(e) => setNewRequirement({ ...newRequirement, conversion: e.target.value })}
-                className="p-1 border border-gray-300 rounded"
+                className="p-1 border border-gray-300 rounded flex-1"
                 placeholder="e.g., 3.5/4.0"
                 required
               />
@@ -605,13 +670,13 @@ export default function ApplicationDetail({ session }) {
                 type="text"
                 value={newRequirement.min_score || ''}
                 onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
-                className="p-1 border border-gray-300 rounded"
+                className="p-1 border border-gray-300 rounded flex-1"
                 placeholder="e.g., 160 Verbal, 160 Quantitative"
                 required
               />
             )}
             {newRequirement.name === 'English Proficiency Test Scores' && (
-              <div className="flex flex-col space-y-2">
+              <div className="flex flex-col space-y-2 flex-1">
                 <label>
                   <input
                     type="checkbox"
@@ -640,7 +705,7 @@ export default function ApplicationDetail({ session }) {
                 type="text"
                 value={newRequirement.min_score || ''}
                 onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
-                className="p-1 border border-gray-300 rounded"
+                className="p-1 border border-gray-300 rounded flex-1"
                 placeholder="e.g., WES Evaluation"
               />
             )}
@@ -649,11 +714,52 @@ export default function ApplicationDetail({ session }) {
                 type="number"
                 value={newRequirement.num_recommenders || ''}
                 onChange={(e) => setNewRequirement({ ...newRequirement, num_recommenders: e.target.value })}
-                className="p-1 border border-gray-300 rounded"
+                className="p-1 border border-gray-300 rounded flex-1"
                 placeholder="Number of recommenders"
                 min="1"
                 required
               />
+            )}
+            {newRequirement.name === 'Application Fee' && (
+              <>
+                <input
+                  type="text"
+                  value={newRequirement.application_fee}
+                  onChange={(e) => {
+                    setNewRequirement({ ...newRequirement, application_fee: e.target.value });
+                    updateAppField('application_fee', e.target.value);
+                  }}
+                  className="p-1 border border-gray-300 rounded flex-1"
+                  placeholder="e.g., $100 or 0"
+                  disabled={newRequirement.fee_waived}
+                  required={!newRequirement.fee_waived}
+                />
+                <label className="flex items-center flex-1">
+                  <input
+                    type="checkbox"
+                    checked={newRequirement.fee_waived}
+                    onChange={() => {
+                      const newWaived = !newRequirement.fee_waived;
+                      setNewRequirement({ ...newRequirement, fee_waived: newWaived });
+                      updateAppField('fee_waived', newWaived);
+                    }}
+                  />{' '}
+                  <span className="ml-1 text-sm">Fee Waived</span>
+                </label>
+                {newRequirement.fee_waived && (
+                  <input
+                    type="text"
+                    value={newRequirement.fee_waiver_details || ''}
+                    onChange={(e) => {
+                      setNewRequirement({ ...newRequirement, fee_waiver_details: e.target.value });
+                      updateAppField('fee_waiver_details', e.target.value);
+                    }}
+                    className="p-1 border border-gray-300 rounded flex-1"
+                    placeholder="e.g., Financial hardship waiver"
+                    required
+                  />
+                )}
+              </>
             )}
             {newRequirement.name && (
               <button
@@ -665,7 +771,8 @@ export default function ApplicationDetail({ session }) {
                   (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value) ||
                   (newRequirement.name === 'GPA/Class of Degree' && !newRequirement.conversion) ||
                   (newRequirement.name === 'Standardized Test Scores (GRE)' && !newRequirement.min_score) ||
-                  (newRequirement.name === 'Application Fee' && !app.application_fee && !app.fee_waived) ||
+                  (newRequirement.name === 'Application Fee' && !newRequirement.fee_waived && !newRequirement.application_fee) ||
+                  (newRequirement.name === 'Application Fee' && newRequirement.fee_waived && !newRequirement.fee_waiver_details) ||
                   (newRequirement.name === 'Recommenders' && !newRequirement.num_recommenders)
                 }
               >
