@@ -15,12 +15,17 @@ export default function AddApplication({ session }) {
     status: 'Planning',
     funding_status: 'None',
   });
-  const [selectedPredefined, setSelectedPredefined] = useState([]);
-  const [customRequirements, setCustomRequirements] = useState([]);
+  const [requiresRecommenders, setRequiresRecommenders] = useState(false);
   const [numRecommenders, setNumRecommenders] = useState(0);
   const [recommenderNames, setRecommenderNames] = useState([]);
-
-  const predefinedRequirements = ['SOP', 'Transcripts', 'GRE', 'TOEFL/IELTS', 'CV'];
+  const [requirements, setRequirements] = useState({
+    'Writing Sample': { selected: false, criteria_type: '', criteria_value: '' },
+    'Personal Statement': { selected: false, criteria_type: '', criteria_value: '' },
+    'Statement of Purpose/Motivation Letter': { selected: false, criteria_type: '', criteria_value: '' },
+    'Faculty Needed to be Contacted': { selected: false },
+    'GRE': { selected: false, min_score: '' },
+    'TOEFL/IELTS': { selected: false, min_score: '' },
+  });
 
   const updateFormData = (key, value) => setFormData({ ...formData, [key]: value });
 
@@ -34,14 +39,25 @@ export default function AddApplication({ session }) {
     setFormData({ ...formData, deadlines: newDeadlines });
   };
 
-  const togglePredefined = (req) => {
-    setSelectedPredefined((prev) =>
-      prev.includes(req) ? prev.filter((r) => r !== req) : [...prev, req]
-    );
+  const toggleRequirement = (reqName) => {
+    setRequirements({
+      ...requirements,
+      [reqName]: {
+        ...requirements[reqName],
+        selected: !requirements[reqName].selected,
+        // Reset fields when unchecking
+        criteria_type: requirements[reqName].selected ? '' : requirements[reqName].criteria_type,
+        criteria_value: requirements[reqName].selected ? '' : requirements[reqName].criteria_value,
+        min_score: requirements[reqName].selected ? '' : requirements[reqName].min_score,
+      },
+    });
   };
 
-  const addCustomRequirement = (name) => {
-    if (name) setCustomRequirements([...customRequirements, name]);
+  const updateRequirementField = (reqName, field, value) => {
+    setRequirements({
+      ...requirements,
+      [reqName]: { ...requirements[reqName], [field]: value },
+    });
   };
 
   const handleNumRecommenders = (num) => {
@@ -56,12 +72,6 @@ export default function AddApplication({ session }) {
   };
 
   const handleSubmit = async () => {
-    const requirements = [...selectedPredefined, ...customRequirements];
-    const recommenders = recommenderNames.map((name, idx) => ({
-      name: name || `Recommender ${idx + 1}`,
-      status: 'Identified',
-    }));
-
     const appData = {
       user_id: session.user.id,
       country: formData.country,
@@ -93,15 +103,28 @@ export default function AddApplication({ session }) {
     }
 
     // Insert requirements
-    if (requirements.length > 0) {
-      const reqInsert = requirements.map((name) => ({ name, application_id: app.id, is_completed: false }));
-      const { error: reqError } = await supabase.from('requirements').insert(reqInsert);
+    const selectedRequirements = Object.entries(requirements)
+      .filter(([_, req]) => req.selected)
+      .map(([name, req]) => ({
+        name,
+        application_id: app.id,
+        is_completed: false,
+        criteria_type: req.criteria_type || null,
+        criteria_value: req.criteria_value ? parseInt(req.criteria_value) : null,
+        min_score: req.min_score ? parseInt(req.min_score) : null,
+      }));
+    if (selectedRequirements.length > 0) {
+      const { error: reqError } = await supabase.from('requirements').insert(selectedRequirements);
       if (reqError) console.error(reqError);
     }
 
     // Insert recommenders
-    if (recommenders.length > 0) {
-      const recInsert = recommenders.map((rec) => ({ ...rec, application_id: app.id }));
+    if (requiresRecommenders && recommenderNames.length > 0) {
+      const recInsert = recommenderNames.map((name, idx) => ({
+        name: name || `Recommender ${idx + 1}`,
+        status: 'Identified',
+        application_id: app.id,
+      }));
       const { error: recError } = await supabase.from('recommenders').insert(recInsert);
       if (recError) console.error(recError);
     }
@@ -172,46 +195,91 @@ export default function AddApplication({ session }) {
         return (
           <div>
             <h2 className="text-2xl font-bold mb-4 text-neutralDark">Requirements</h2>
-            {predefinedRequirements.map((req) => (
-              <label key={req} className="block mb-2">
-                <input type="checkbox" checked={selectedPredefined.includes(req)} onChange={() => togglePredefined(req)} /> {req}
-              </label>
+            {Object.keys(requirements).map((reqName) => (
+              <div key={reqName} className="mb-4">
+                <label className="block mb-2">
+                  <input
+                    type="checkbox"
+                    checked={requirements[reqName].selected}
+                    onChange={() => toggleRequirement(reqName)}
+                  />{' '}
+                  {reqName}
+                </label>
+                {requirements[reqName].selected && (
+                  <>
+                    {['Writing Sample', 'Personal Statement', 'Statement of Purpose/Motivation Letter'].includes(reqName) && (
+                      <div className="ml-6 mb-2">
+                        <select
+                          value={requirements[reqName].criteria_type}
+                          onChange={(e) => updateRequirementField(reqName, 'criteria_type', e.target.value)}
+                          className="p-2 border border-gray-300 rounded mr-2"
+                        >
+                          <option value="">Select Criteria</option>
+                          <option>Words</option>
+                          <option>Pages</option>
+                        </select>
+                        <input
+                          type="number"
+                          placeholder="Value (e.g., 500)"
+                          value={requirements[reqName].criteria_value}
+                          onChange={(e) => updateRequirementField(reqName, 'criteria_value', e.target.value)}
+                          className="p-2 border border-gray-300 rounded"
+                        />
+                      </div>
+                    )}
+                    {['GRE', 'TOEFL/IELTS'].includes(reqName) && (
+                      <div className="ml-6">
+                        <input
+                          type="number"
+                          placeholder="Minimum Score"
+                          value={requirements[reqName].min_score}
+                          onChange={(e) => updateRequirementField(reqName, 'min_score', e.target.value)}
+                          className="p-2 border border-gray-300 rounded"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             ))}
-            <div className="mt-4">
-              <input type="text" id="customReq" placeholder="Custom Requirement" className="p-2 border border-gray-300 rounded mr-2" />
-              <button onClick={() => addCustomRequirement(document.getElementById('customReq').value)} className="bg-secondary text-white py-2 px-4 rounded">
-                Add Custom
-              </button>
-            </div>
-            <ul className="mt-2 list-disc pl-5">
-              {customRequirements.map((req, idx) => (
-                <li key={idx}>{req}</li>
-              ))}
-            </ul>
+            <label className="block mb-2">
+              <input
+                type="checkbox"
+                checked={requiresRecommenders}
+                onChange={() => setRequiresRecommenders(!requiresRecommenders)}
+              />{' '}
+              Recommenders Required
+            </label>
           </div>
         );
       case 4:
         return (
           <div>
             <h2 className="text-2xl font-bold mb-4 text-neutralDark">Recommenders</h2>
-            <input
-              type="number"
-              min="0"
-              value={numRecommenders}
-              onChange={(e) => handleNumRecommenders(parseInt(e.target.value) || 0)}
-              placeholder="Number of Recommenders"
-              className="w-full p-2 mb-4 border border-gray-300 rounded"
-            />
-            {recommenderNames.map((name, idx) => (
-              <input
-                key={idx}
-                type="text"
-                placeholder={`Recommender ${idx + 1} Name`}
-                value={name}
-                onChange={(e) => updateRecommenderName(idx, e.target.value)}
-                className="w-full p-2 mb-2 border border-gray-300 rounded"
-              />
-            ))}
+            {requiresRecommenders ? (
+              <>
+                <input
+                  type="number"
+                  min="0"
+                  value={numRecommenders}
+                  onChange={(e) => handleNumRecommenders(parseInt(e.target.value) || 0)}
+                  placeholder="Number of Recommenders"
+                  className="w-full p-2 mb-4 border border-gray-300 rounded"
+                />
+                {recommenderNames.map((name, idx) => (
+                  <input
+                    key={idx}
+                    type="text"
+                    placeholder={`Recommender ${idx + 1} Name`}
+                    value={name}
+                    onChange={(e) => updateRecommenderName(idx, e.target.value)}
+                    className="w-full p-2 mb-2 border border-gray-300 rounded"
+                  />
+                ))}
+              </>
+            ) : (
+              <p className="text-neutralDark">Recommenders not required.</p>
+            )}
           </div>
         );
       case 5:

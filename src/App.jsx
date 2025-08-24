@@ -3,7 +3,10 @@ import { supabase } from './supabaseClient';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { Routes, Route } from 'react-router-dom';
-import Dashboard from './components/Dashboard.jsx'; // We'll create this next
+import Dashboard from './components/Dashboard.jsx';
+import AddApplication from './components/AddApplication.jsx';
+import ApplicationDetail from './components/ApplicationDetail.jsx';
+// We'll create this next
 
 export default function App() {
   const [session, setSession] = useState(null);

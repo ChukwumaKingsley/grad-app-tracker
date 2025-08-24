@@ -85,15 +85,21 @@ export default function ApplicationDetail({ session }) {
     else setDeadlines(deadlines.map((d) => (d.id === dlId ? { ...d, [field]: value } : d)));
   };
 
-  const addRequirement = async (name) => {
+  const addRequirement = async (name, criteria_type = null, criteria_value = null, min_score = null) => {
     if (!name) return;
-    const newReq = { application_id: id, name, is_completed: false };
+    const newReq = { application_id: id, name, is_completed: false, criteria_type, criteria_value, min_score };
     const { data, error } = await supabase.from('requirements').insert([newReq]).select().single();
     if (error) console.error(error);
     else {
       setRequirements([...requirements, data]);
       updateProgress();
     }
+  };
+
+  const updateRequirement = async (reqId, field, value) => {
+    const { error } = await supabase.from('requirements').update({ [field]: value }).eq('id', reqId);
+    if (error) console.error(error);
+    else setRequirements(requirements.map((r) => (r.id === reqId ? { ...r, [field]: value } : r)));
   };
 
   const deleteRequirement = async (reqId) => {
@@ -217,11 +223,46 @@ export default function ApplicationDetail({ session }) {
                 onChange={(e) => toggleRequirement(req.id, e.target.checked)}
               />
             ) : null}
-            <span className="ml-2">{req.name}</span>
+            <span className="ml-2">
+              {req.name}
+              {req.criteria_type && req.criteria_value ? ` (${req.criteria_value} ${req.criteria_type})` : ''}
+              {req.min_score ? ` (Min Score: ${req.min_score})` : ''}
+            </span>
             {editMode && (
-              <button onClick={() => deleteRequirement(req.id)} className="ml-auto text-red-500">
-                Delete
-              </button>
+              <div className="ml-auto flex items-center">
+                {['Writing Sample', 'Personal Statement', 'Statement of Purpose/Motivation Letter'].includes(req.name) && (
+                  <>
+                    <select
+                      value={req.criteria_type || ''}
+                      onChange={(e) => updateRequirement(req.id, 'criteria_type', e.target.value || null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                    >
+                      <option value="">Select Criteria</option>
+                      <option>Words</option>
+                      <option>Pages</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={req.criteria_value || ''}
+                      onChange={(e) => updateRequirement(req.id, 'criteria_value', e.target.value ? parseInt(e.target.value) : null)}
+                      className="p-1 border border-gray-300 rounded mr-2"
+                      placeholder="Value"
+                    />
+                  </>
+                )}
+                {['GRE', 'TOEFL/IELTS'].includes(req.name) && (
+                  <input
+                    type="number"
+                    value={req.min_score || ''}
+                    onChange={(e) => updateRequirement(req.id, 'min_score', e.target.value ? parseInt(e.target.value) : null)}
+                    className="p-1 border border-gray-300 rounded mr-2"
+                    placeholder="Min Score"
+                  />
+                )}
+                <button onClick={() => deleteRequirement(req.id)} className="text-red-500">
+                  Delete
+                </button>
+              </div>
             )}
           </li>
         ))}
