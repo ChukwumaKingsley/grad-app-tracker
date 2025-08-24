@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SkeletonDetail } from './SkeletonLoader';
 import { FaPen, FaTrash } from 'react-icons/fa';
+import debounce from 'lodash/debounce';
 
 export default function ApplicationDetail({ session }) {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export default function ApplicationDetail({ session }) {
   const [appChanges, setAppChanges] = useState({});
   const [pendingDateChanges, setPendingDateChanges] = useState({});
   const [editingDateId, setEditingDateId] = useState(null);
+  const inFlightWrite = useRef(false);
 
   useEffect(() => {
     fetchData();
@@ -54,9 +56,11 @@ export default function ApplicationDetail({ session }) {
     setImportantDates(dateData || []);
 
     const { data: reqData } = await supabase.from('requirements').select('*').eq('application_id', id);
+    console.log('Fetched requirements:', reqData); // Debug log
     setRequirements(reqData || []);
 
     const { data: recData } = await supabase.from('recommenders').select('*').eq('application_id', id).order('id');
+    console.log('Fetched recommenders:', recData); // Debug log
     const recommenderReq = reqData?.find((req) => req.name === 'Recommenders');
     const numRecommenders = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
     const paddedRecommenders = recData || [];
@@ -74,6 +78,46 @@ export default function ApplicationDetail({ session }) {
 
     setLoading(false);
   };
+
+  const computeProgress = (requirements, recommenders, editMode) => {
+    const filteredRequirements = editMode ? requirements : requirements.filter((req) => req.name !== 'Recommenders');
+    const completedReqs = filteredRequirements.filter((r) => r.is_completed).length;
+    const totalReqs = filteredRequirements.length;
+    const submittedRecs = recommenders.filter((r) => r.status === 'Submitted').length;
+    const recommenderReq = requirements.find((req) => req.name === 'Recommenders');
+    const totalRecs = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
+    const total = totalReqs + totalRecs;
+    console.log({ completedReqs, totalReqs, submittedRecs, totalRecs, total }); // Debug log
+    if (completedReqs === 0 && submittedRecs === 0) return 0;
+    return total > 0 ? Math.round((completedReqs + submittedRecs) / total * 100) : 0;
+  };
+
+  const computedProgress = useMemo(() => computeProgress(requirements, recommenders, editMode), [requirements, recommenders, editMode]);
+
+  const persistProgress = async (progress) => {
+    if (inFlightWrite.current) return;
+    inFlightWrite.current = true;
+    try {
+      const { error } = await supabase.from('applications').update({ progress }).eq('id', id);
+      if (error) {
+        console.error('Failed to update progress:', error);
+        toast.error('Failed to update progress');
+      } else {
+        setApp((prev) => ({ ...prev, progress }));
+      }
+    } finally {
+      inFlightWrite.current = false;
+    }
+  };
+
+  const debouncedPersistProgress = useMemo(() => debounce(persistProgress, 250), []);
+
+  useEffect(() => {
+    if (app && computedProgress !== app.progress) {
+      debouncedPersistProgress(computedProgress);
+    }
+    return () => debouncedPersistProgress.cancel();
+  }, [computedProgress, app, debouncedPersistProgress]);
 
   const getStatusColor = (status, type = 'application') => {
     if (type === 'application') {
@@ -107,17 +151,6 @@ export default function ApplicationDetail({ session }) {
     return 'text-green-600';
   };
 
-  const updateProgress = async () => {
-    const completedReqs = requirements.filter((r) => r.is_completed).length;
-    const submittedRecs = recommenders.filter((r) => r.status === 'Submitted').length;
-    const total = requirements.length + recommenders.length;
-    const newProgress = total > 0 ? Math.round((completedReqs + submittedRecs) / total * 100) : 0;
-
-    const { error } = await supabase.from('applications').update({ progress: newProgress }).eq('id', id);
-    if (error) console.error(error);
-    else setApp({ ...app, progress: newProgress });
-  };
-
   const toggleRequirement = async (reqId, isCompleted) => {
     setButtonLoading((prev) => ({ ...prev, [`req-${reqId}`]: true }));
     const { error } = await supabase.from('requirements').update({ is_completed: isCompleted }).eq('id', reqId);
@@ -127,7 +160,6 @@ export default function ApplicationDetail({ session }) {
       console.error(error);
     } else {
       setRequirements(requirements.map((r) => (r.id === reqId ? { ...r, is_completed: isCompleted } : r)));
-      updateProgress();
       toast.success('Requirement status updated');
     }
   };
@@ -214,7 +246,16 @@ export default function ApplicationDetail({ session }) {
     const currentCount = currentRecommenders.data?.length || 0;
     const newCount = parseInt(newNumRecommenders) || 0;
 
-    if (newCount > currentCount) {
+    if (newCount === 0) {
+      const { error } = await supabase.from('recommenders').delete().eq('application_id', id);
+      if (error) {
+        toast.error('Failed to clear recommenders table');
+        console.error(error);
+        setButtonLoading((prev) => ({ ...prev, adjustRecommenders: false }));
+        return;
+      }
+      setRecommenders([]);
+    } else if (newCount > currentCount) {
       const additionalRecs = Array(newCount - currentCount).fill().map(() => ({
         application_id: id,
         status: 'Unidentified',
@@ -254,7 +295,6 @@ export default function ApplicationDetail({ session }) {
     }
     setRecommenders(paddedRecommenders.slice(0, newCount));
     setButtonLoading((prev) => ({ ...prev, adjustRecommenders: false }));
-    updateProgress();
   };
 
   const updateRecommenderStatus = async (recId, newStatus) => {
@@ -293,15 +333,14 @@ export default function ApplicationDetail({ session }) {
       setRecommenders(recommenders.map((r) => (r.id === recId ? data : r)));
     }
     setButtonLoading((prev) => ({ ...prev, [`rec-status-${recId}`]: false }));
-    updateProgress();
     toast.success('Recommender status updated');
   };
 
   const addRequirement = async () => {
     const { name, criteria_type, criteria_value, min_score, test_type, waived, conversion, type, num_recommenders, application_fee, fee_waived, fee_waiver_details } = newRequirement;
     if (!name) return;
-    if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(name) && !criteria_type) return;
-    if (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(name) && criteria_type !== 'Unspecified' && !criteria_value) return;
+    if (['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(name) && !criteria_type) return;
+    if (['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(name) && criteria_type !== 'Unspecified' && !criteria_value) return;
     if (name === 'GPA/Class of Degree' && !conversion) return;
     if (name === 'Standardized Test Scores (GRE)' && !min_score) return;
     if (name === 'Application Fee' && !fee_waived && !application_fee) return;
@@ -384,7 +423,6 @@ export default function ApplicationDetail({ session }) {
       fee_waiver_details: app.fee_waiver_details,
     });
     setButtonLoading((prev) => ({ ...prev, addRequirement: false }));
-    updateProgress();
     toast.success('Requirement added');
   };
 
@@ -441,7 +479,6 @@ export default function ApplicationDetail({ session }) {
       setRequirements(requirements.filter((r) => r.id !== reqId));
       delete pendingChanges[reqId];
       setPendingChanges({ ...pendingChanges });
-      updateProgress();
       toast.success('Requirement deleted');
     }
   };
@@ -491,7 +528,6 @@ export default function ApplicationDetail({ session }) {
     }
     setNewRecommender(null);
     setButtonLoading((prev) => ({ ...prev, saveRecommender: false }));
-    updateProgress();
     toast.success('Recommender saved');
   };
 
@@ -531,7 +567,6 @@ export default function ApplicationDetail({ session }) {
     }
     setRecommenders(updatedRecommenders.slice(0, numRecommenders));
     setButtonLoading((prev) => ({ ...prev, [`delete-rec-${recId}`]: false }));
-    updateProgress();
     toast.success('Recommender deleted');
   };
 
@@ -551,6 +586,7 @@ export default function ApplicationDetail({ session }) {
 
   const requirementOptions = [
     'Statement of Purpose',
+    'Personal Statement',
     'Writing Samples',
     'Research Proposal',
     'Transcripts',
@@ -564,8 +600,9 @@ export default function ApplicationDetail({ session }) {
     'Others',
   ].filter((option) => !requirements.some((req) => req.name === option));
 
-  const completedRequirements = requirements.filter((r) => r.is_completed).length;
-  const totalRequirements = requirements.length;
+  const filteredRequirements = editMode ? requirements : requirements.filter((req) => req.name !== 'Recommenders');
+  const completedRequirements = filteredRequirements.filter((r) => r.is_completed).length;
+  const totalRequirements = filteredRequirements.length;
   const submittedRecommenders = recommenders.filter((r) => r.status === 'Submitted').length;
   const recommenderReq = requirements.find((req) => req.name === 'Recommenders');
   const totalRecommenders = recommenderReq ? parseInt(recommenderReq.num_recommenders) || 0 : 0;
@@ -717,9 +754,9 @@ export default function ApplicationDetail({ session }) {
           )}
           <div className="mb-6 mt-4">
             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-              <div className="bg-accent h-2.5 rounded-full" style={{ width: `${app.progress}%` }} />
+              <div className="bg-accent h-2.5 rounded-full" style={{ width: `${computedProgress}%` }} />
             </div>
-            <p className="text-neutralDark">{app.progress}% Complete</p>
+            <p className="text-neutralDark">{computedProgress}% Complete</p>
           </div>
         </div>
         {/* Right Column: Secondary Info */}
@@ -886,7 +923,7 @@ export default function ApplicationDetail({ session }) {
           </tr>
         </thead>
         <tbody>
-          {requirements.map((req, index) => (
+          {filteredRequirements.map((req, index) => (
             <tr key={req.id} className="border-b">
               <td className="p-2">{index + 1}</td>
               <td className="p-2">{req.name}</td>
@@ -901,7 +938,7 @@ export default function ApplicationDetail({ session }) {
               </td>
               {editMode && (
                 <td className="p-2">
-                  {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(req.name) && (
+                  {['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(req.name) && (
                     <div className="flex flex-col space-y-2">
                       <select
                         value={pendingChanges[req.id]?.criteria_type || req.criteria_type || ''}
@@ -1086,7 +1123,7 @@ export default function ApplicationDetail({ session }) {
                   </option>
                 ))}
               </select>
-              {['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && (
+              {['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && (
                 <>
                   <select
                     value={newRequirement.criteria_type || ''}
@@ -1236,8 +1273,8 @@ export default function ApplicationDetail({ session }) {
                   className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
                   disabled={
                     !newRequirement.name ||
-                    (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
-                    (['Statement of Purpose', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value) ||
+                    (['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
+                    (['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value) ||
                     (newRequirement.name === 'GPA/Class of Degree' && !newRequirement.conversion) ||
                     (newRequirement.name === 'Standardized Test Scores (GRE)' && !newRequirement.min_score) ||
                     (newRequirement.name === 'Application Fee' && !newRequirement.fee_waived && !newRequirement.application_fee) ||
