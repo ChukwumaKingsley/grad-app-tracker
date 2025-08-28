@@ -708,7 +708,7 @@ export default function ApplicationDetail({ session }) {
     <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
       <nav className="mb-6">
-        <Link to="/" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
+  <Link to="/applications" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
       </nav>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-primary">{app.program}</h2>

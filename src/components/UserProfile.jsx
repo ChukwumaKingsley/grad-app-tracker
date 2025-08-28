@@ -37,7 +37,7 @@ export default function UserProfile({ session }) {
       <ToastContainer />
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-xl mx-auto">
         <nav className="text-sm text-neutralDark mb-4">
-          <Link to="/" className="text-secondary hover:underline">Dashboard</Link> &gt; Profile
+          <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; Profile
         </nav>
         <h1 className="text-3xl font-bold text-primary mb-6">My Profile</h1>
         <div className="space-y-4">
