@@ -705,10 +705,11 @@ export default function ApplicationDetail({ session }) {
   if (loading) return <SkeletonDetail />;
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+    <div className="container mx-auto p-4 md:p-8">
+      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
-      <nav className="mb-6">
-  <Link to="/applications" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
+      <nav className="text-sm text-neutralDark mb-4">
+        <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.program}</span>
       </nav>
       <div className="flex justify-between items-center mb-6">
   <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.program}</h2>
@@ -1660,6 +1661,7 @@ export default function ApplicationDetail({ session }) {
     )}
   </>
 )}
+      </div>
     </div>
   );
 }

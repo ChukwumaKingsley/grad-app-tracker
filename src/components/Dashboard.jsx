@@ -47,26 +47,10 @@ export default function Dashboard({ session }) {
     fetchApplications();
   }, [session.user.id]);
 
-  if (loading) {
-    return (
-      <div className="container mx-auto p-4">
-        <div className="flex justify-between items-center mb-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4 animate-pulse" />
-          <div className="h-10 bg-gray-200 rounded w-24 animate-pulse" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array(3).fill(0).map((_, index) => (
-            <SkeletonCard key={index} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-4">
+    <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 md:px-8">
       <div className="flex justify-between items-center mb-6">
-  <h1 className="text-3xl font-bold" style={{ color: '#313E50' }}>Applications</h1>
+        <h1 className="text-3xl font-bold" style={{ color: '#313E50' }}>Applications</h1>
         <div className="flex items-center gap-2">
           <button
             aria-label="Grid view"
@@ -112,13 +96,18 @@ export default function Dashboard({ session }) {
           </Link>
         </div>
       </div>
-      {applications.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array(3).fill(0).map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
+        </div>
+      ) : applications.length === 0 ? (
         <p className="text-neutralDark">No applications found. Start by adding one!</p>
       ) : (
         viewType === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {applications.map((app) => {
-              // Lighter card backgrounds for grid view, status color only for status
               const statusColors = {
                 Planning: 'bg-gray-100',
                 'In Progress': 'bg-blue-100',
@@ -132,8 +121,6 @@ export default function Dashboard({ session }) {
                 Rejected: 'bg-red-50',
                 default: 'bg-gray-100',
               };
-              const cardBg = 'bg-gray-50';
-              const progressBg = 'bg-gray-200';
               const getStatusStyles = (status) => {
                 switch (status) {
                   case 'Planning': return 'text-gray-700 font-bold';
@@ -158,55 +145,36 @@ export default function Dashboard({ session }) {
                 return 'MSc';
               };
               return (
-                <Link
+                <div
                   key={app.id}
-                  to={`/application/${app.id}`}
-                  className={`${cardBg} p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow relative`}
+                  className={`rounded-lg shadow-md p-5 bg-white border hover:shadow-lg transition cursor-pointer flex flex-col gap-2 ${statusColors[app.status] || statusColors.default}`}
                   title={`View details for ${app.program}`}
+                  onClick={() => window.location.href = `/application/${app.id}`}
                 >
-                  {/* Level tag at top right */}
-                  <span
-                    className={`absolute top-4 right-4 text-xs font-bold ${getLevelTag(app.level)}`}
-                    title={app.level}
-                    style={{ maxWidth: '6rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block' }}
-                  >
-                    {getLevelShort(app.level)}
-                  </span>
-                  <h2
-                    className="text-xl font-bold text-primary mb-2 min-h-[3.5rem] max-h-[3.5rem] leading-tight overflow-hidden line-clamp-2"
-                    style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-                    title={app.program}
-                  >
-                    {app.program}
-                  </h2>
-                  <p className="mb-2 break-words" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
-                    <span className="font-semibold text-sm text-gray-700">Location:</span> <span className="text-gray-600">{
-                      [app.country, app.state, app.city].filter(Boolean).join(', ')
-                    }</span>
-                  </p>
-                  <p className="mb-2">
-                    <span className="font-semibold text-sm text-gray-700">Status:</span>
-                    <span className={`ml-1 px-2 py-1 rounded ${statusColors[app.status] || statusColors.default} ${getStatusStyles(app.status)}`} title={app.status}>{app.status}</span>
-                  </p>
-                  <p className="mb-2"><span className="font-semibold text-sm text-gray-700">Funding:</span> <span className="text-gray-600" title={app.funding_status}>{app.funding_status}</span></p>
-                  <p className="mb-2">
-                    <span className="font-semibold text-sm text-gray-700">Important Dates:</span>{' '}
-                    <span className="text-gray-600" title={app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'None'}>
-                      {app.nearestDate ? (
-                        `${app.nearestDate.name}: ${app.nearestDate.date}`
-                      ) : (
-                        'None'
-                      )}
-                    </span>
-                  </p>
-                  <div className={`w-full ${progressBg} rounded-full h-2.5 mb-2`} title={`Progress: ${app.progress}%`}>
-                    <div
-                      className="bg-accent h-2.5 rounded-full"
-                      style={{ width: `${app.progress}%` }}
-                    />
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="font-bold text-lg truncate" style={{ color: '#313E50' }}>{app.program}</h2>
+                    <span className={`text-xs px-2 py-1 rounded ${getLevelTag(app.level)} bg-slate-100 font-bold`} title={app.level}>{getLevelShort(app.level)}</span>
                   </div>
-                  <p className="text-gray-700"><span className="font-semibold text-sm">{app.progress}% Complete</span></p>
-                </Link>
+                  <div className="text-sm text-slate_gray-700 truncate" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
+                    {[app.country, app.state, app.city].filter(Boolean).join(', ')}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-xs px-2 py-1 rounded ${getStatusStyles(app.status)} bg-white border`} title={app.status}>{app.status}</span>
+                    {app.funding_status && <span className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 border" title={app.funding_status}>{app.funding_status}</span>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-500">{app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'No upcoming date'}</span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                      <div
+                        className="bg-accent h-2.5 rounded-full"
+                        style={{ width: `${app.progress}%` }}
+                      />
+                    </div>
+                    <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
+                  </div>
+                </div>
               );
             })}
           </div>

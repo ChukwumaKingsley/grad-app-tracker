@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { SkeletonTable } from './SkeletonTable';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 
@@ -30,7 +32,7 @@ export default function Timelines() {
 
   async function fetchDeadlines() {
     setLoading(true);
-    let query = supabase.from('important_dates').select('*, application:application_id(program, country, status, level)');
+  let query = supabase.from('important_dates').select('*, application:application_id(id, program, country, status, level)');
     query = query.order('date', { ascending: true });
     const { data, error } = await query;
     if (!error) setAllDeadlines(data || []);
@@ -121,7 +123,7 @@ export default function Timelines() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Upcoming Deadlines & Timelines</h1>
+        <h1 className="text-3xl font-bold" style={{ color: '#313E50' }}>Upcoming Deadlines & Timelines</h1>
         <button
           className={`p-2 rounded border ml-2 flex items-center justify-center w-10 h-10 border-blue-600 bg-transparent`}
           style={{ background: 'none' }}
@@ -156,7 +158,7 @@ export default function Timelines() {
         })()}
       </div>
       {loading ? (
-        <div>Loading...</div>
+        <SkeletonTable rows={6} cols={6} />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm rounded-lg overflow-hidden">
@@ -344,7 +346,19 @@ export default function Timelines() {
                   <tr key={d.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-4 py-2">{d.date}</td>
                     <td className="px-4 py-2">{d.name}</td>
-                    <td className="px-4 py-2">{d.application?.program}</td>
+                    <td className="px-4 py-2">
+                      {d.application?.id ? (
+                        <Link
+                          to={`/application/${d.application.id}`}
+                          className="text-blue-700 hover:underline font-semibold truncate"
+                          title={`View details for ${d.application.program}`}
+                        >
+                          {d.application.program}
+                        </Link>
+                      ) : (
+                        d.application?.program
+                      )}
+                    </td>
                     <td className="px-4 py-2 max-w-[7rem] truncate" title={d.application?.country}>{d.application?.country}</td>
                     <td className="px-4 py-2">{d.application?.status}</td>
                     <td className="px-4 py-2">{d.application?.level}</td>

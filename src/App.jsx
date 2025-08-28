@@ -30,7 +30,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const [navExpanded, setNavExpanded] = useState(true);
+  const [navExpanded, setNavExpanded] = useState(false);
 
   if (!session) {
     return (

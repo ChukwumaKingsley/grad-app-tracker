@@ -33,13 +33,11 @@ export default function UserProfile({ session }) {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
+  <div className="container mx-0 p-4 md:p-1">
       <ToastContainer />
-      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-xl mx-auto">
-        <nav className="text-sm text-neutralDark mb-4">
-          <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; Profile
-        </nav>
   <h1 className="text-3xl font-bold mb-6" style={{ color: '#313E50' }}>My Profile</h1>
+      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-xl mx-auto">
+        
         <div className="space-y-4">
           <div className="flex flex-col">
             <label className="text-sm font-medium" style={{ color: '#313E50' }}>Email</label>

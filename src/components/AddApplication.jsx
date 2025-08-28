@@ -189,8 +189,12 @@ export default function AddApplication({ session }) {
   return (
     <div className="min-h-screen bg-neutralBg p-8">
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
-  <h1 className="text-3xl font-bold mb-6" style={{ color: '#313E50' }}>Add New Application</h1>
+      <div className="container mx-auto p-4 md:p-8">
+        <nav className="text-sm text-neutralDark mb-4">
+          <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; Add Application
+        </nav>
+        <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
+          <h1 className="text-3xl font-bold mb-6" style={{ color: '#313E50' }}>Add New Application</h1>
         <form onSubmit={handleSubmit}>
           {/* Reordered fields */}
           <div className="mb-4">
@@ -664,6 +668,7 @@ export default function AddApplication({ session }) {
             Save Application
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
