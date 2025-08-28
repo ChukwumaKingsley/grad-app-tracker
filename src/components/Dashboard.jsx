@@ -1,3 +1,18 @@
+// Utility for formatting date and countdown (shared with Timelines)
+function formatDateCountdown(dateStr) {
+  if (!dateStr) return { formatted: '', countdown: '', isPast: false };
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = date.setHours(0,0,0,0) - now.setHours(0,0,0,0);
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const options = { year: '2-digit', month: 'short', day: 'numeric' };
+  const formatted = date.toLocaleDateString('en-US', options);
+  let countdown = '';
+  if (diffDays > 0) countdown = `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+  else if (diffDays < 0) countdown = `${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'} ago`;
+  else countdown = 'Today';
+  return { formatted, countdown, isPast: diffDays < 0 };
+}
 import { useState, useEffect } from 'react';
 import { FaThLarge, FaList, FaPlus } from 'react-icons/fa';
 import { supabase } from '../supabaseClient';
@@ -179,7 +194,18 @@ export default function Dashboard({ session }) {
                     {app.funding_status && <span className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 border" title={app.funding_status}>{app.funding_status}</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500">{app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'No upcoming date'}</span>
+                    {app.nearestDate ? (
+                      <span className="text-xs text-gray-500">
+                        {app.nearestDate.name}: {formatDateCountdown(app.nearestDate.date).formatted}
+                        {formatDateCountdown(app.nearestDate.date).countdown && (
+                          <span> (
+                            {formatDateCountdown(app.nearestDate.date).countdown}
+                          )</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">No upcoming date</span>
+                    )}
                   </div>
                     <div className="mt-2">
                       <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
@@ -239,7 +265,23 @@ export default function Dashboard({ session }) {
                       <td className="px-4 py-2" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>{[app.country, app.state, app.city].filter(Boolean).join(', ')}</td>
                       <td className={`px-4 py-2 ${getStatusStyles(app.status)}`} title={app.status}>{app.status}</td>
                       <td className="px-4 py-2" title={app.funding_status}>{app.funding_status}</td>
-                      <td className="px-4 py-2" title={app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'None'}>{app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'None'}</td>
+                      <td className="px-4 py-2">
+                        {app.nearestDate ? (
+                          <span
+                            className="cursor-help"
+                            title={app.nearestDate.name + (app.nearestDate.description ? (': ' + app.nearestDate.description) : '')}
+                          >
+                            {formatDateCountdown(app.nearestDate.date).formatted}
+                            {formatDateCountdown(app.nearestDate.date).countdown && (
+                              <span> (
+                                {formatDateCountdown(app.nearestDate.date).countdown}
+                              )</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">None</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <ProgressCircle value={app.progress || 0} size={32} color="#2563eb" />
