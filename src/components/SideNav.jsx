@@ -8,8 +8,13 @@ export default function SideNav({ expanded, setExpanded, userName }) {
   const location = useLocation();
 
   return (
-  <aside className={`fixed top-0 left-0 h-full bg-charcoal-500 text-slate_gray-900 flex flex-col transition-all duration-200 z-40 ${expanded ? 'w-56' : 'w-16'} shadow-lg`} style={{minWidth: expanded ? 180 : 64}}>
-  <div className="flex items-center justify-between px-4 py-4 border-b border-charcoal-400">
+    <aside className={`fixed top-0 left-0 h-full bg-charcoal-500 text-slate_gray-900 flex flex-col transition-all duration-200 z-40 ${expanded ? 'w-56' : 'w-16'} shadow-lg`} style={{minWidth: expanded ? 180 : 64}}>
+      {/* Nav bar icon at the very top */}
+      <div className="flex items-center justify-center px-4 py-4 border-b border-charcoal-400" style={{height: 56}}>
+        <img src="/image.png" alt="GradJournie Logo" style={{ width: 32, height: 32, borderRadius: 8, background: '#fff' }} />
+      </div>
+      {/* Name and arrow below icon */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-charcoal-400" style={{height: 48}}>
         {expanded && (
           <span className="text-base font-semibold truncate" style={{lineHeight: '1.5', color: '#F9FAFB'}} title={userName}>{userName}</span>
         )}
