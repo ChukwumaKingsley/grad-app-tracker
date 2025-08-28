@@ -74,33 +74,58 @@ export default function Dashboard({ session }) {
         <p className="text-neutralDark">No applications found. Start by adding one!</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {applications.map((app) => (
-            <Link
-              key={app.id}
-              to={`/application/${app.id}`}
-              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-            >
-              <h2 className="text-xl font-bold text-primary mb-2">{app.program}</h2>
-              <p className="text-neutralDark mb-2">{app.country} - {app.level}</p>
-              <p className="text-neutralDark mb-2">Status: {app.status}</p>
-              <p className="text-neutralDark mb-2">Funding: {app.funding_status}</p>
-              <p className="text-neutralDark mb-2">
-                Important Dates:{' '}
-                {app.nearestDate ? (
-                  `${app.nearestDate.name}: ${app.nearestDate.date}`
-                ) : (
-                  'None'
-                )}
-              </p>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                <div
-                  className="bg-accent h-2.5 rounded-full"
-                  style={{ width: `${app.progress}%` }}
-                />
-              </div>
-              <p className="text-neutralDark">{app.progress}% Complete</p>
-            </Link>
-          ))}
+          {applications.map((app) => {
+            // Use the same status color logic as ApplicationDetail.jsx
+            // Faint backgrounds for card, bold status text, bold labels
+            const getStatusStyles = (status) => {
+              switch (status) {
+                case 'Planning': return { card: 'bg-gray-200', status: 'bg-gray-300 text-gray-800 font-bold' };
+                case 'In Progress': return { card: 'bg-blue-100', status: 'bg-blue-600 text-white font-bold' };
+                case 'Submitted': return { card: 'bg-green-100', status: 'bg-green-600 text-white font-bold' };
+                case 'Abandoned': return { card: 'bg-red-100', status: 'bg-red-600 text-white font-bold' };
+                case 'Waitlisted': return { card: 'bg-yellow-100', status: 'bg-yellow-600 text-white font-bold' };
+                case 'Awarded': return { card: 'bg-purple-100', status: 'bg-purple-700 text-white font-bold' };
+                case 'Awarded - Full Funding': return { card: 'bg-purple-200', status: 'bg-purple-800 text-white font-bold' };
+                case 'Awarded - Partial Funding': return { card: 'bg-indigo-100', status: 'bg-indigo-700 text-white font-bold' };
+                case 'Awarded - No Funding': return { card: 'bg-gray-300', status: 'bg-gray-700 text-white font-bold' };
+                case 'Rejected': return { card: 'bg-red-200', status: 'bg-red-800 text-white font-bold' };
+                default: return { card: 'bg-gray-200', status: 'bg-gray-400 text-gray-900 font-bold' };
+              }
+            };
+            const styles = getStatusStyles(app.status);
+            return (
+              <Link
+                key={app.id}
+                to={`/application/${app.id}`}
+                className={`${styles.card} p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow`}
+              >
+                <h2 className="text-xl font-bold text-primary mb-2">{app.program}</h2>
+                <p className="mb-2"><span className="font-semibold text-sm">Location/Level:</span> <span className="text-neutralDark">{app.country} - {app.level}</span></p>
+                <p className="mb-2">
+                  <span className="font-semibold text-sm">Status:</span> 
+                  <span className={`ml-1 px-2 py-1 rounded ${styles.status}`}>{app.status}</span>
+                </p>
+                <p className="mb-2"><span className="font-semibold text-sm">Funding:</span> <span className="text-neutralDark">{app.funding_status}</span></p>
+                <p className="mb-2">
+                  <span className="font-semibold text-sm">Important Dates:</span>{' '}
+                  <span className="text-neutralDark">
+                    {app.nearestDate ? (
+                      `${app.nearestDate.name}: ${app.nearestDate.date}`
+                    ) : (
+                      'None'
+                    )}
+                  </span>
+                </p>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                  <div
+                    className="bg-accent h-2.5 rounded-full"
+                    style={{ width: `${app.progress}%` }}
+                  />
+                </div>
+                <p className="text-neutralDark"><span className="font-semibold text-sm">{app.progress}% Complete</span></p>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

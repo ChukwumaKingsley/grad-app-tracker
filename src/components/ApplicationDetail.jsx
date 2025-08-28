@@ -138,6 +138,10 @@ export default function ApplicationDetail({ session }) {
         case 'Abandoned': return 'bg-red-200 text-red-800';
         case 'Waitlisted': return 'bg-yellow-200 text-yellow-800';
         case 'Awarded': return 'bg-purple-200 text-purple-800';
+        case 'Awarded - Full Funding': return 'bg-purple-300 text-purple-900';
+        case 'Awarded - Partial Funding': return 'bg-indigo-200 text-indigo-800';
+        case 'Awarded - No Funding': return 'bg-gray-300 text-gray-900';
+        case 'Rejected': return 'bg-red-300 text-red-900';
         default: return 'bg-gray-200 text-gray-800';
       }
     } else {
@@ -174,8 +178,26 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  const updateAppField = (field, value) => {
-    setAppChanges({ ...appChanges, [field]: value });
+  // For instant status update
+  const updateAppField = async (field, value) => {
+    if (field === 'status') {
+      setAppChanges((prev) => ({ ...prev, [field]: value }));
+      setButtonLoading((prev) => ({ ...prev, status: true }));
+      const { error } = await supabase.from('applications').update({ status: value }).eq('id', id);
+      setButtonLoading((prev) => ({ ...prev, status: false }));
+      if (!error) {
+        setApp((prev) => ({ ...prev, status: value }));
+        toast.success('Status updated');
+        setAppChanges((prev) => {
+          const { status, ...rest } = prev;
+          return rest;
+        });
+      } else {
+        toast.error('Failed to update status');
+      }
+    } else {
+      setAppChanges((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   const saveAppChanges = async () => {
@@ -806,13 +828,17 @@ export default function ApplicationDetail({ session }) {
               value={appChanges.status || app.status}
               onChange={(e) => updateAppField('status', e.target.value)}
               className={`ml-2 p-1 border border-gray-300 rounded ${getStatusColor(appChanges.status || app.status, 'application')}`}
+              disabled={buttonLoading.status}
             >
               <option value="Planning" className={getStatusColor('Planning', 'application')}>Planning</option>
               <option value="In Progress" className={getStatusColor('In Progress', 'application')}>In Progress</option>
               <option value="Submitted" className={getStatusColor('Submitted', 'application')}>Submitted</option>
               <option value="Abandoned" className={getStatusColor('Abandoned', 'application')}>Abandoned</option>
               <option value="Waitlisted" className={getStatusColor('Waitlisted', 'application')}>Waitlisted</option>
-              <option value="Awarded" className={getStatusColor('Awarded', 'application')}>Awarded</option>
+              <option value="Awarded - Full Funding" className={getStatusColor('Awarded - Full Funding', 'application')}>Awarded - Full Funding</option>
+              <option value="Awarded - Partial Funding" className={getStatusColor('Awarded - Partial Funding', 'application')}>Awarded - Partial Funding</option>
+              <option value="Awarded - No Funding" className={getStatusColor('Awarded - No Funding', 'application')}>Awarded - No Funding</option>
+              <option value="Rejected" className={getStatusColor('Rejected', 'application')}>Rejected</option>
             </select>
           </div>
           <div className="mb-4">
