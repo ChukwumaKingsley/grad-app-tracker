@@ -93,16 +93,42 @@ export default function Dashboard({ session }) {
               }
             };
             const styles = getStatusStyles(app.status);
+            // Level tag color
+            const getLevelTag = (level) => {
+              if ((level || '').toLowerCase().includes('phd')) return 'text-pink-800';
+              return 'text-blue-800'; // Masters or default
+            };
+            const getLevelShort = (level) => {
+              if ((level || '').toLowerCase().includes('phd')) return 'PhD';
+              return 'MSc';
+            };
             return (
               <Link
                 key={app.id}
                 to={`/application/${app.id}`}
-                className={`${styles.card} p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow`}
+                className={`${styles.card} p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow relative`}
               >
-                <h2 className="text-xl font-bold text-primary mb-2">{app.program}</h2>
-                <p className="mb-2"><span className="font-semibold text-sm">Location/Level:</span> <span className="text-neutralDark">{app.country} - {app.level}</span></p>
+                {/* Level tag at top right */}
+                <span
+                  className={`absolute top-4 right-4 text-xs font-bold ${getLevelTag(app.level)}`}
+                  title={app.level}
+                  style={{ maxWidth: '6rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block' }}
+                >
+                  {getLevelShort(app.level)}
+                </span>
+                <h2
+                  className="text-xl font-bold text-primary mb-2 min-h-[3.5rem] max-h-[3.5rem] leading-tight overflow-hidden line-clamp-2"
+                  style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                  title={app.program}
+                >
+                  {app.program}
+                </h2>
+                {/* Standalone location */}
+                <p className="mb-2 truncate" title={app.country}>
+                  <span className="font-semibold text-sm">Location:</span> <span className="text-neutralDark">{app.country}</span>
+                </p>
                 <p className="mb-2">
-                  <span className="font-semibold text-sm">Status:</span> 
+                  <span className="font-semibold text-sm">Status:</span>
                   <span className={`ml-1 px-2 py-1 rounded ${styles.status}`}>{app.status}</span>
                 </p>
                 <p className="mb-2"><span className="font-semibold text-sm">Funding:</span> <span className="text-neutralDark">{app.funding_status}</span></p>
