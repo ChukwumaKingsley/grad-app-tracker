@@ -1,3 +1,8 @@
+@layer utilities {
+	.bg-neutral-900 { background-color: #18181b !important; }
+	.bg-neutral-800 { background-color: #27272a !important; }
+	.text-neutral-300 { color: #d4d4d8 !important; }
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

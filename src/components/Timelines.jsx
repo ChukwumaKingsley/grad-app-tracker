@@ -177,7 +177,14 @@ export default function Timelines() {
                       </button>
                     )}
                     {dropdown.program && createPortal(
-                      <div ref={dropdownRefs.program} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                      <div ref={dropdownRefs.program} style={{
+                        position: 'absolute',
+                        top: dropdownPos.top,
+                        left: Math.min(dropdownPos.left, window.innerWidth - 260),
+                        width: 'min(14rem, 90vw)',
+                        zIndex: 1000,
+                        maxWidth: '90vw',
+                      }} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('program')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('program')}>Deselect all</button>
@@ -211,7 +218,14 @@ export default function Timelines() {
                       </button>
                     )}
                     {dropdown.country && createPortal(
-                      <div ref={dropdownRefs.country} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                      <div ref={dropdownRefs.country} style={{
+                        position: 'absolute',
+                        top: dropdownPos.top,
+                        left: Math.min(dropdownPos.left, window.innerWidth - 260),
+                        width: 'min(14rem, 90vw)',
+                        zIndex: 1000,
+                        maxWidth: '90vw',
+                      }} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('country')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('country')}>Deselect all</button>
@@ -245,7 +259,14 @@ export default function Timelines() {
                       </button>
                     )}
                     {dropdown.status && createPortal(
-                      <div ref={dropdownRefs.status} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                      <div ref={dropdownRefs.status} style={{
+                        position: 'absolute',
+                        top: dropdownPos.top,
+                        left: Math.min(dropdownPos.left, window.innerWidth - 260),
+                        width: 'min(14rem, 90vw)',
+                        zIndex: 1000,
+                        maxWidth: '90vw',
+                      }} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('status')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('status')}>Deselect all</button>
@@ -279,7 +300,14 @@ export default function Timelines() {
                       </button>
                     )}
                     {dropdown.level && createPortal(
-                      <div ref={dropdownRefs.level} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                      <div ref={dropdownRefs.level} style={{
+                        position: 'absolute',
+                        top: dropdownPos.top,
+                        left: Math.min(dropdownPos.left, window.innerWidth - 260),
+                        width: 'min(14rem, 90vw)',
+                        zIndex: 1000,
+                        maxWidth: '90vw',
+                      }} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('level')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('level')}>Deselect all</button>
@@ -317,7 +345,7 @@ export default function Timelines() {
                     <td className="px-4 py-2">{d.date}</td>
                     <td className="px-4 py-2">{d.name}</td>
                     <td className="px-4 py-2">{d.application?.program}</td>
-                    <td className="px-4 py-2">{d.application?.country}</td>
+                    <td className="px-4 py-2 max-w-[7rem] truncate" title={d.application?.country}>{d.application?.country}</td>
                     <td className="px-4 py-2">{d.application?.status}</td>
                     <td className="px-4 py-2">{d.application?.level}</td>
                   </tr>
