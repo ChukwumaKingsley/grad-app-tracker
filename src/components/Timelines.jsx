@@ -1,13 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 
 export default function Timelines() {
   const [allDeadlines, setAllDeadlines] = useState([]); // all fetched data
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState(false);
-  const [filters, setFilters] = useState({ country: [], status: [], level: [] });
-  const [dropdown, setDropdown] = useState({ country: false, status: false, level: false });
+  const [filters, setFilters] = useState({ program: [], country: [], status: [], level: [] });
+  const [dropdown, setDropdown] = useState({ program: false, country: false, status: false, level: false });
+  const [dropdownPos, setDropdownPos] = useState({});
   const dropdownRefs = {
+    program: useRef(),
     country: useRef(),
     status: useRef(),
     level: useRef(),
@@ -19,6 +22,7 @@ export default function Timelines() {
 
   // Build dropdown options from allDeadlines
   const options = {
+    program: Array.from(new Set(allDeadlines.map(d => d.application?.program).filter(Boolean))),
     country: Array.from(new Set(allDeadlines.map(d => d.application?.country).filter(Boolean))),
     status: Array.from(new Set(allDeadlines.map(d => d.application?.status).filter(Boolean))),
     level: Array.from(new Set(allDeadlines.map(d => d.application?.level).filter(Boolean))),
@@ -35,8 +39,20 @@ export default function Timelines() {
 
 
   // Dropdown logic
-  function toggleDropdown(type) {
-    setDropdown(prev => ({ ...prev, [type]: !prev[type] }));
+  function toggleDropdown(type, e) {
+    setDropdown(prev => {
+      const newState = { program: false, country: false, status: false, level: false };
+      newState[type] = !prev[type];
+      return newState;
+    });
+    if (e && e.target) {
+      const rect = e.target.getBoundingClientRect();
+      setDropdownPos({
+        type,
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+      });
+    }
   }
 
   function handleOptionChange(type, value) {
@@ -111,8 +127,8 @@ export default function Timelines() {
           style={{ background: 'none' }}
           onClick={() => {
             if (filterMode) {
-              setFilters({ country: [], status: [], level: [] });
-              setDropdown({ country: false, status: false, level: false });
+              setFilters({ program: [], country: [], status: [], level: [] });
+              setDropdown({ program: false, country: false, status: false, level: false });
             }
             setFilterMode(f => !f);
           }}
@@ -148,21 +164,54 @@ export default function Timelines() {
               <tr>
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2">Event</th>
-                <th className="px-4 py-2">Program</th>
+                <th className="px-4 py-2 relative">
+                  <div className="flex items-center justify-between">
+                    <span>Program</span>
+                    {filterMode && (
+                      <button
+                        className="group flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2"
+                        onClick={e => { e.stopPropagation(); toggleDropdown('program', e); }}
+                        title="Filter by program"
+                      >
+                        <FunnelIcon active={filters.program.length > 0} />
+                      </button>
+                    )}
+                    {dropdown.program && createPortal(
+                      <div ref={dropdownRefs.program} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                        <div className="flex justify-between mb-1">
+                          <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('program')}>Select all</button>
+                          <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('program')}>Deselect all</button>
+                        </div>
+                        {options.program.length === 0 && <div className="text-xs text-gray-400">No options</div>}
+                        {options.program.map(opt => (
+                          <label key={opt} className="block text-sm cursor-pointer text-gray-800">
+                            <input
+                              type="checkbox"
+                              checked={filters.program.includes(opt)}
+                              onChange={() => handleOptionChange('program', opt)}
+                              className="mr-2"
+                            />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>, document.body
+                    )}
+                  </div>
+                </th>
                 <th className="px-4 py-2 relative">
                   <div className="flex items-center justify-between">
                     <span>Country</span>
                     {filterMode && (
                       <button
                         className="group flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={e => { e.stopPropagation(); toggleDropdown('country'); }}
+                        onClick={e => { e.stopPropagation(); toggleDropdown('country', e); }}
                         title="Filter by country"
                       >
                         <FunnelIcon active={filters.country.length > 0} />
                       </button>
                     )}
-                    {dropdown.country && (
-                      <div ref={dropdownRefs.country} className="absolute z-30 right-0 top-8 w-48 bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                    {dropdown.country && createPortal(
+                      <div ref={dropdownRefs.country} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('country')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('country')}>Deselect all</button>
@@ -179,7 +228,7 @@ export default function Timelines() {
                             {opt}
                           </label>
                         ))}
-                      </div>
+                      </div>, document.body
                     )}
                   </div>
                 </th>
@@ -189,14 +238,14 @@ export default function Timelines() {
                     {filterMode && (
                       <button
                         className="group flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={e => { e.stopPropagation(); toggleDropdown('status'); }}
+                        onClick={e => { e.stopPropagation(); toggleDropdown('status', e); }}
                         title="Filter by status"
                       >
                         <FunnelIcon active={filters.status.length > 0} />
                       </button>
                     )}
-                    {dropdown.status && (
-                      <div ref={dropdownRefs.status} className="absolute z-30 right-0 top-8 w-48 bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                    {dropdown.status && createPortal(
+                      <div ref={dropdownRefs.status} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('status')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('status')}>Deselect all</button>
@@ -213,7 +262,7 @@ export default function Timelines() {
                             {opt}
                           </label>
                         ))}
-                      </div>
+                      </div>, document.body
                     )}
                   </div>
                 </th>
@@ -223,14 +272,14 @@ export default function Timelines() {
                     {filterMode && (
                       <button
                         className="group flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={e => { e.stopPropagation(); toggleDropdown('level'); }}
+                        onClick={e => { e.stopPropagation(); toggleDropdown('level', e); }}
                         title="Filter by level"
                       >
                         <FunnelIcon active={filters.level.length > 0} />
                       </button>
                     )}
-                    {dropdown.level && (
-                      <div ref={dropdownRefs.level} className="absolute z-30 right-0 top-8 w-48 bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
+                    {dropdown.level && createPortal(
+                      <div ref={dropdownRefs.level} style={{position:'absolute', top: dropdownPos.top, left: dropdownPos.left, width: '14rem', zIndex: 1000}} className="bg-white border rounded shadow-lg p-2 min-h-[120px] max-h-96 overflow-y-auto">
                         <div className="flex justify-between mb-1">
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleSelectAll('level')}>Select all</button>
                           <button className="text-xs text-blue-600 hover:underline" onClick={() => handleDeselectAll('level')}>Deselect all</button>
@@ -247,7 +296,7 @@ export default function Timelines() {
                             {opt}
                           </label>
                         ))}
-                      </div>
+                      </div>, document.body
                     )}
                   </div>
                 </th>
@@ -257,6 +306,7 @@ export default function Timelines() {
               {allDeadlines
                 .filter(d => {
                   if (!d.application) return false;
+                  if (filters.program.length > 0 && !filters.program.includes(d.application.program)) return false;
                   if (filters.country.length > 0 && !filters.country.includes(d.application.country)) return false;
                   if (filters.status.length > 0 && !filters.status.includes(d.application.status)) return false;
                   if (filters.level.length > 0 && !filters.level.includes(d.application.level)) return false;
