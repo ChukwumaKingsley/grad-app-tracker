@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard.jsx';
+import Timelines from './components/Timelines.jsx';
 import AddApplication from './components/AddApplication.jsx';
 import ApplicationDetail from './components/ApplicationDetail.jsx';
 import UserProfile from './components/UserProfile.jsx';
-import { FaUserCircle } from 'react-icons/fa';
+// import { FaUserCircle } from 'react-icons/fa';
 import './index.css';
+import SideNav from './components/SideNav.jsx';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -28,6 +30,8 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const [navExpanded, setNavExpanded] = useState(false);
+
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutralLight">
@@ -45,31 +49,26 @@ export default function App() {
   const userName = session.user.user_metadata?.full_name || session.user.email;
 
   return (
-    <div className="min-h-screen bg-neutralLight">
-      <header className="bg-primary text-white p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold hover:text-secondary">
-            Grad App Tracker
-          </Link>
-          <div className="flex items-center space-x-4">
-            <span className="text-lg hidden md:block">Welcome, {userName}!</span>
-            <Link to="/profile" className="text-white p-2 rounded-full hover:bg-secondary transition-colors" title="My Profile">
-              <FaUserCircle size={24} />
-            </Link>
-            <button onClick={() => supabase.auth.signOut()} className="bg-secondary hover:bg-blue-700 text-white py-2 px-4 rounded">
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </header>
-      <main className="container mx-auto p-4">
-        <Routes>
-          <Route path="/" element={<Dashboard session={session} />} />
-          <Route path="/add" element={<AddApplication session={session} />} />
-          <Route path="/application/:id" element={<ApplicationDetail session={session} />} />
-          <Route path="/profile" element={<UserProfile session={session} />} />
-        </Routes>
-      </main>
+    <div className="min-h-screen bg-neutralLight flex">
+      <SideNav expanded={navExpanded} setExpanded={setNavExpanded} userName={userName} />
+      <div className={`flex-1 flex flex-col transition-all duration-200 ${navExpanded ? 'ml-56' : 'ml-16'}`}>
+        <header className="bg-charcoal-500 text-slate_gray-100 p-4 w-full sticky top-0 z-30 shadow flex items-center justify-between">
+          <div className="text-2xl font-bold text-center w-full" style={{ color: '#F9FAFB' }}>GradJournie</div>
+          {!navExpanded && (
+            <span className="ml-4 text-base font-semibold truncate" style={{ color: '#F9FAFB', maxWidth: 180 }} title={userName}>{userName}</span>
+          )}
+        </header>
+        <main className="flex-1 p-4">
+          <Routes>
+            <Route path="/" element={<Navigate to="/applications" replace />} />
+            <Route path="/applications" element={<Dashboard session={session} />} />
+            <Route path="/add" element={<AddApplication session={session} />} />
+            <Route path="/application/:id" element={<ApplicationDetail session={session} />} />
+            <Route path="/profile" element={<UserProfile session={session} />} />
+            <Route path="/timelines" element={<Timelines />} />
+          </Routes>
+        </main>
+      </div>
     </div>
   );
 }

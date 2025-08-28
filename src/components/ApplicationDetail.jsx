@@ -1,4 +1,36 @@
+// List of US states
+const usStates = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia',
+  'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland',
+  'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey',
+  'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina',
+  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+];
 import { useState, useEffect, useMemo, useRef } from 'react';
+
+// Comprehensive list of all countries (copied from AddApplication)
+const countries = [
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+  'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan',
+  'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia',
+  'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica',
+  'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador',
+  'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France',
+  'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau',
+  'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland',
+  'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan',
+  'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar',
+  'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia',
+  'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal',
+  'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan',
+  'Palau', 'Palestine State', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar',
+  'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia',
+  'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa',
+  'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Taiwan',
+  'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan',
+  'Tuvalu', 'Uganda', 'Ukraine', 'UAE', 'UK', 'USA', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City',
+  'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
+];
 import { supabase } from '../supabaseClient';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
@@ -138,6 +170,10 @@ export default function ApplicationDetail({ session }) {
         case 'Abandoned': return 'bg-red-200 text-red-800';
         case 'Waitlisted': return 'bg-yellow-200 text-yellow-800';
         case 'Awarded': return 'bg-purple-200 text-purple-800';
+        case 'Awarded - Full Funding': return 'bg-purple-300 text-purple-900';
+        case 'Awarded - Partial Funding': return 'bg-indigo-200 text-indigo-800';
+        case 'Awarded - No Funding': return 'bg-gray-300 text-gray-900';
+        case 'Rejected': return 'bg-red-300 text-red-900';
         default: return 'bg-gray-200 text-gray-800';
       }
     } else {
@@ -174,8 +210,26 @@ export default function ApplicationDetail({ session }) {
     }
   };
 
-  const updateAppField = (field, value) => {
-    setAppChanges({ ...appChanges, [field]: value });
+  // For instant status update
+  const updateAppField = async (field, value) => {
+    if (field === 'status') {
+      setAppChanges((prev) => ({ ...prev, [field]: value }));
+      setButtonLoading((prev) => ({ ...prev, status: true }));
+      const { error } = await supabase.from('applications').update({ status: value }).eq('id', id);
+      setButtonLoading((prev) => ({ ...prev, status: false }));
+      if (!error) {
+        setApp((prev) => ({ ...prev, status: value }));
+        toast.success('Status updated');
+        setAppChanges((prev) => {
+          const { status, ...rest } = prev;
+          return rest;
+        });
+      } else {
+        toast.error('Failed to update status');
+      }
+    } else {
+      setAppChanges((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   const saveAppChanges = async () => {
@@ -651,18 +705,19 @@ export default function ApplicationDetail({ session }) {
   if (loading) return <SkeletonDetail />;
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+    <div className="container mx-auto p-4 md:p-8">
+      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
-      <nav className="mb-6">
-        <Link to="/" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
+      <nav className="text-sm text-neutralDark mb-4">
+        <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.program}</span>
       </nav>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-primary">{app.program}</h2>
+  <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.program}</h2>
         <div className="hidden md:flex items-center space-x-2">
-          <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded text-sm md:text-base">
+          <button onClick={() => setEditMode(!editMode)} className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-paynes_gray-500 font-semibold shadow">
             {editMode ? 'View Mode' : 'Edit Mode'}
           </button>
-          <button onClick={() => setShowDeleteModal(true)} className="bg-red-500 text-white py-2 px-4 rounded text-sm md:text-base hover:bg-red-600">
+          <button onClick={() => setShowDeleteModal(true)} className="bg-red-600 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-red-700 font-semibold shadow">
             Delete
           </button>
         </div>
@@ -672,11 +727,11 @@ export default function ApplicationDetail({ session }) {
           </button>
           {showOptions && (
             <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-              <button onClick={() => { setEditMode(!editMode); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <button onClick={() => { setEditMode(!editMode); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-slate_gray-900 hover:bg-slate_gray-100">
                 {editMode ? 'View Mode' : 'Edit Mode'}
               </button>
               <button onClick={() => { setShowDeleteModal(true); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100">
-                Delete Application
+                <span className="text-red-600 font-semibold">Delete Application</span>
               </button>
             </div>
           )}
@@ -725,15 +780,61 @@ export default function ApplicationDetail({ session }) {
           <div className="mb-4">
             <span className="font-medium text-neutralDark">Country:</span>
             {editMode ? (
-              <input
-                type="text"
+              <select
                 value={appChanges.country || app.country}
                 onChange={(e) => updateAppField('country', e.target.value)}
                 className="ml-2 p-1 border border-gray-300 rounded w-3/4"
                 required
-              />
+              >
+                <option value="">Select a country</option>
+                {countries.map((country, idx) => (
+                  <option key={idx} value={country}>{country}</option>
+                ))}
+              </select>
             ) : (
               <span className="ml-2">{app.country}</span>
+            )}
+          </div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">State:</span>
+            {editMode ? (
+              (appChanges.country || app.country) === 'USA' ? (
+                <select
+                  value={appChanges.state || app.state || ''}
+                  onChange={(e) => updateAppField('state', e.target.value)}
+                  className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                  disabled={!(appChanges.country || app.country)}
+                >
+                  <option value="">Select a state</option>
+                  {usStates.map((state, idx) => (
+                    <option key={idx} value={state}>{state}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={appChanges.state || app.state || ''}
+                  onChange={(e) => updateAppField('state', e.target.value)}
+                  className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                  disabled={!(appChanges.country || app.country)}
+                />
+              )
+            ) : (
+              <span className="ml-2">{app.state || <span className="text-gray-400">(none)</span>}</span>
+            )}
+          </div>
+          <div className="mb-4">
+            <span className="font-medium text-neutralDark">City:</span>
+            {editMode ? (
+              <input
+                type="text"
+                value={appChanges.city || app.city || ''}
+                onChange={(e) => updateAppField('city', e.target.value)}
+                className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                disabled={!(appChanges.country || app.country)}
+              />
+            ) : (
+              <span className="ml-2">{app.city || <span className="text-gray-400">(none)</span>}</span>
             )}
           </div>
           <div className="mb-4">
@@ -806,13 +907,17 @@ export default function ApplicationDetail({ session }) {
               value={appChanges.status || app.status}
               onChange={(e) => updateAppField('status', e.target.value)}
               className={`ml-2 p-1 border border-gray-300 rounded ${getStatusColor(appChanges.status || app.status, 'application')}`}
+              disabled={buttonLoading.status}
             >
               <option value="Planning" className={getStatusColor('Planning', 'application')}>Planning</option>
               <option value="In Progress" className={getStatusColor('In Progress', 'application')}>In Progress</option>
               <option value="Submitted" className={getStatusColor('Submitted', 'application')}>Submitted</option>
               <option value="Abandoned" className={getStatusColor('Abandoned', 'application')}>Abandoned</option>
               <option value="Waitlisted" className={getStatusColor('Waitlisted', 'application')}>Waitlisted</option>
-              <option value="Awarded" className={getStatusColor('Awarded', 'application')}>Awarded</option>
+              <option value="Awarded - Full Funding" className={getStatusColor('Awarded - Full Funding', 'application')}>Awarded - Full Funding</option>
+              <option value="Awarded - Partial Funding" className={getStatusColor('Awarded - Partial Funding', 'application')}>Awarded - Partial Funding</option>
+              <option value="Awarded - No Funding" className={getStatusColor('Awarded - No Funding', 'application')}>Awarded - No Funding</option>
+              <option value="Rejected" className={getStatusColor('Rejected', 'application')}>Rejected</option>
             </select>
           </div>
           <div className="mb-4">
@@ -834,7 +939,7 @@ export default function ApplicationDetail({ session }) {
           {editMode && (
             <button
               onClick={saveAppChanges}
-              className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
+              className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm disabled:bg-slate_gray-300 flex items-center hover:bg-paynes_gray-500 font-semibold shadow"
               disabled={Object.keys(appChanges).length === 0 || buttonLoading.saveApp}
             >
               {buttonLoading.saveApp ? (
@@ -852,9 +957,9 @@ export default function ApplicationDetail({ session }) {
           )}
           <div className="mb-6 mt-4">
             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-              <div className="bg-accent h-2.5 rounded-full" style={{ width: `${computedProgress}%` }} />
+              <div className="bg-delft_blue-500 h-2.5 rounded-full" style={{ width: `${computedProgress}%` }} />
             </div>
-            <p className="text-neutralDark">{computedProgress}% Complete</p>
+            <p className="text-slate_gray-900">{computedProgress}% Complete</p>
           </div>
         </div>
         {/* Right Column: Secondary Info */}
@@ -967,7 +1072,7 @@ export default function ApplicationDetail({ session }) {
               <>
                 <button
                   onClick={addImportantDate}
-                  className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                  className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
                   disabled={buttonLoading.addDate}
                 >
                   {buttonLoading.addDate ? (
@@ -985,7 +1090,7 @@ export default function ApplicationDetail({ session }) {
                 {Object.keys(pendingDateChanges).length > 0 && (
                   <button
                     onClick={saveDateChanges}
-                    className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                    className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
                     disabled={buttonLoading.saveDates}
                   >
                     {buttonLoading.saveDates ? (
@@ -1370,7 +1475,7 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name && (
                 <button
                   onClick={addRequirement}
-                  className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
+                  className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm disabled:bg-slate_gray-300 flex items-center hover:bg-paynes_gray-500 font-semibold shadow"
                   disabled={
                     !newRequirement.name ||
                     (['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
@@ -1401,7 +1506,7 @@ export default function ApplicationDetail({ session }) {
           {Object.keys(pendingChanges).length > 0 && (
             <button
               onClick={saveRequirementChanges}
-              className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+              className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
               disabled={buttonLoading.saveRequirements}
             >
               {buttonLoading.saveRequirements ? (
@@ -1537,7 +1642,7 @@ export default function ApplicationDetail({ session }) {
         </select>
         <button
           onClick={saveRecommender}
-          className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+          className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
           disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status || buttonLoading.saveRecommender}
         >
           {buttonLoading.saveRecommender ? (
@@ -1556,6 +1661,7 @@ export default function ApplicationDetail({ session }) {
     )}
   </>
 )}
+      </div>
     </div>
   );
 }
