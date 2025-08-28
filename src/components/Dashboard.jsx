@@ -3,11 +3,18 @@ import { FaThLarge, FaList, FaPlus } from 'react-icons/fa';
 import { supabase } from '../supabaseClient';
 import { Link } from 'react-router-dom';
 import { SkeletonCard } from './SkeletonLoader';
+import { SkeletonListTable } from './SkeletonListTable';
+import { ProgressCircle } from './ProgressCircle';
+
+
 
 export default function Dashboard({ session }) {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewType, setViewType] = useState('grid');
+  const [viewType, setViewType] = useState(() => {
+    // Try to load from localStorage, fallback to 'grid'
+    return localStorage.getItem('dashboardViewType') || 'grid';
+  });
 
   useEffect(() => {
     async function fetchApplications() {
@@ -46,6 +53,11 @@ export default function Dashboard({ session }) {
     }
     fetchApplications();
   }, [session.user.id]);
+
+  // Save viewType to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('dashboardViewType', viewType);
+  }, [viewType]);
 
   return (
     <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 md:px-8">
@@ -97,11 +109,15 @@ export default function Dashboard({ session }) {
         </div>
       </div>
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array(3).fill(0).map((_, index) => (
-            <SkeletonCard key={index} />
-          ))}
-        </div>
+        viewType === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array(3).fill(0).map((_, index) => (
+              <SkeletonCard key={index} />
+            ))}
+          </div>
+        ) : (
+          <SkeletonListTable rows={5} cols={6} />
+        )
       ) : applications.length === 0 ? (
         <p className="text-neutralDark">No applications found. Start by adding one!</p>
       ) : (
@@ -165,15 +181,15 @@ export default function Dashboard({ session }) {
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-500">{app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'No upcoming date'}</span>
                   </div>
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
-                      <div
-                        className="bg-accent h-2.5 rounded-full"
-                        style={{ width: `${app.progress}%` }}
-                      />
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                        <div
+                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                          style={{ width: `${app.progress || 0}%` }}
+                        />
+                      </div>
+                      <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
                     </div>
-                    <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
-                  </div>
                 </div>
               );
             })}
@@ -225,13 +241,10 @@ export default function Dashboard({ session }) {
                       <td className="px-4 py-2" title={app.funding_status}>{app.funding_status}</td>
                       <td className="px-4 py-2" title={app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'None'}>{app.nearestDate ? `${app.nearestDate.name}: ${app.nearestDate.date}` : 'None'}</td>
                       <td className="px-4 py-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2.5 mb-1" title={`Progress: ${app.progress}%`}>
-                          <div
-                            className="bg-accent h-2.5 rounded-full"
-                            style={{ width: `${app.progress}%` }}
-                          />
+                        <div className="flex items-center gap-2">
+                          <ProgressCircle value={app.progress || 0} size={32} color="#2563eb" />
+                          <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
                         </div>
-                        <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
                       </td>
                       <td className="px-4 py-2 text-right">
                         <span className={`text-xs font-bold ${getLevelTag(app.level)}`} title={app.level}>{getLevelShort(app.level)}</span>
