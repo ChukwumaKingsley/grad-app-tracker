@@ -79,17 +79,17 @@ export default function Dashboard({ session }) {
             // Faint backgrounds for card, bold status text, bold labels
             const getStatusStyles = (status) => {
               switch (status) {
-                case 'Planning': return { card: 'bg-gray-200', status: 'bg-gray-300 text-gray-800 font-bold' };
-                case 'In Progress': return { card: 'bg-blue-100', status: 'bg-blue-600 text-white font-bold' };
-                case 'Submitted': return { card: 'bg-green-100', status: 'bg-green-600 text-white font-bold' };
-                case 'Abandoned': return { card: 'bg-red-100', status: 'bg-red-600 text-white font-bold' };
-                case 'Waitlisted': return { card: 'bg-yellow-100', status: 'bg-yellow-600 text-white font-bold' };
-                case 'Awarded': return { card: 'bg-purple-100', status: 'bg-purple-700 text-white font-bold' };
-                case 'Awarded - Full Funding': return { card: 'bg-purple-200', status: 'bg-purple-800 text-white font-bold' };
-                case 'Awarded - Partial Funding': return { card: 'bg-indigo-100', status: 'bg-indigo-700 text-white font-bold' };
-                case 'Awarded - No Funding': return { card: 'bg-gray-300', status: 'bg-gray-700 text-white font-bold' };
-                case 'Rejected': return { card: 'bg-red-200', status: 'bg-red-800 text-white font-bold' };
-                default: return { card: 'bg-gray-200', status: 'bg-gray-400 text-gray-900 font-bold' };
+                case 'Planning': return { card: 'bg-gray-200', status: 'text-gray-800 font-bold' };
+                case 'In Progress': return { card: 'bg-blue-100', status: 'text-blue-700 font-bold' };
+                case 'Submitted': return { card: 'bg-green-100', status: 'text-green-700 font-bold' };
+                case 'Abandoned': return { card: 'bg-red-100', status: 'text-red-700 font-bold' };
+                case 'Waitlisted': return { card: 'bg-yellow-100', status: 'text-yellow-700 font-bold' };
+                case 'Awarded': return { card: 'bg-purple-100', status: 'text-purple-700 font-bold' };
+                case 'Awarded - Full Funding': return { card: 'bg-purple-200', status: 'text-purple-800 font-bold' };
+                case 'Awarded - Partial Funding': return { card: 'bg-indigo-100', status: 'text-indigo-700 font-bold' };
+                case 'Awarded - No Funding': return { card: 'bg-gray-300', status: 'text-gray-700 font-bold' };
+                case 'Rejected': return { card: 'bg-red-200', status: 'text-red-800 font-bold' };
+                default: return { card: 'bg-gray-200', status: 'text-gray-900 font-bold' };
               }
             };
             const styles = getStatusStyles(app.status);
@@ -123,13 +123,15 @@ export default function Dashboard({ session }) {
                 >
                   {app.program}
                 </h2>
-                {/* Standalone location */}
-                <p className="mb-2 truncate" title={app.country}>
-                  <span className="font-semibold text-sm">Location:</span> <span className="text-neutralDark">{app.country}</span>
+                {/* Standalone location: country, state, city (comma separated, allow wrap) */}
+                <p className="mb-2 break-words" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
+                  <span className="font-semibold text-sm">Location:</span> <span className="text-neutralDark">{
+                    [app.country, app.state, app.city].filter(Boolean).join(', ')
+                  }</span>
                 </p>
                 <p className="mb-2">
                   <span className="font-semibold text-sm">Status:</span>
-                  <span className={`ml-1 px-2 py-1 rounded ${styles.status}`}>{app.status}</span>
+                  <span className={`ml-1 ${styles.status}`}>{app.status}</span>
                 </p>
                 <p className="mb-2"><span className="font-semibold text-sm">Funding:</span> <span className="text-neutralDark">{app.funding_status}</span></p>
                 <p className="mb-2">
