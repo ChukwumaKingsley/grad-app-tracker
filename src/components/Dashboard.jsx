@@ -66,24 +66,48 @@ export default function Dashboard({ session }) {
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-primary">Applications</h1>
+  <h1 className="text-3xl font-bold" style={{ color: '#313E50' }}>Applications</h1>
         <div className="flex items-center gap-2">
           <button
             aria-label="Grid view"
-            className={`p-2 rounded ${viewType === 'grid' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-600'} hover:bg-accent hover:text-white transition`}
+            className={`p-2 rounded font-semibold shadow transition-colors
+              ${viewType === 'grid' ? 'bg-delft_blue-500' : 'bg-white'}
+              ${viewType !== 'grid' ? 'hover:bg-blue-100' : 'hover:bg-delft_blue-700'}
+              border border-slate_gray-200'
+            `}
             onClick={() => setViewType('grid')}
+            style={{ outline: viewType === 'grid' ? '2px solid #243A5A' : 'none' }}
           >
-            <FaThLarge size={20} />
+            <FaThLarge
+              size={20}
+              className={
+                viewType === 'grid'
+                  ? 'text-white'
+                  : 'text-charcoal-500 group-hover:text-delft_blue-500'
+              }
+            />
           </button>
           <button
             aria-label="List view"
-            className={`p-2 rounded ${viewType === 'list' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-600'} hover:bg-accent hover:text-white transition`}
+            className={`p-2 rounded font-semibold shadow transition-colors
+              ${viewType === 'list' ? 'bg-delft_blue-500' : 'bg-white'}
+              ${viewType !== 'list' ? 'hover:bg-blue-100' : 'hover:bg-delft_blue-700'}
+              border border-slate_gray-200'
+            `}
             onClick={() => setViewType('list')}
+            style={{ outline: viewType === 'list' ? '2px solid #243A5A' : 'none' }}
           >
-            <FaList size={20} />
+            <FaList
+              size={20}
+              className={
+                viewType === 'list'
+                  ? 'text-white'
+                  : 'text-charcoal-500 group-hover:text-delft_blue-500'
+              }
+            />
           </button>
           <span className="w-2" />
-          <Link to="/add" className="p-2 rounded-full bg-accent text-white hover:bg-green-600 flex items-center justify-center" title="Add Application">
+          <Link to="/add" className="p-2 rounded-full bg-delft_blue-500 text-slate_gray-100 hover:bg-paynes_gray-500 flex items-center justify-center shadow" title="Add Application">
             <FaPlus size={20} />
           </Link>
         </div>

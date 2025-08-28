@@ -711,12 +711,12 @@ export default function ApplicationDetail({ session }) {
   <Link to="/applications" className="text-secondary hover:underline">Home</Link> &gt; <span className="text-neutralDark">{app.program}</span>
       </nav>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-primary">{app.program}</h2>
+  <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.program}</h2>
         <div className="hidden md:flex items-center space-x-2">
-          <button onClick={() => setEditMode(!editMode)} className="bg-secondary text-white py-2 px-4 rounded text-sm md:text-base">
+          <button onClick={() => setEditMode(!editMode)} className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-paynes_gray-500 font-semibold shadow">
             {editMode ? 'View Mode' : 'Edit Mode'}
           </button>
-          <button onClick={() => setShowDeleteModal(true)} className="bg-red-500 text-white py-2 px-4 rounded text-sm md:text-base hover:bg-red-600">
+          <button onClick={() => setShowDeleteModal(true)} className="bg-red-600 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-red-700 font-semibold shadow">
             Delete
           </button>
         </div>
@@ -726,11 +726,11 @@ export default function ApplicationDetail({ session }) {
           </button>
           {showOptions && (
             <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-              <button onClick={() => { setEditMode(!editMode); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <button onClick={() => { setEditMode(!editMode); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-slate_gray-900 hover:bg-slate_gray-100">
                 {editMode ? 'View Mode' : 'Edit Mode'}
               </button>
               <button onClick={() => { setShowDeleteModal(true); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100">
-                Delete Application
+                <span className="text-red-600 font-semibold">Delete Application</span>
               </button>
             </div>
           )}
@@ -938,7 +938,7 @@ export default function ApplicationDetail({ session }) {
           {editMode && (
             <button
               onClick={saveAppChanges}
-              className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
+              className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm disabled:bg-slate_gray-300 flex items-center hover:bg-paynes_gray-500 font-semibold shadow"
               disabled={Object.keys(appChanges).length === 0 || buttonLoading.saveApp}
             >
               {buttonLoading.saveApp ? (
@@ -956,9 +956,9 @@ export default function ApplicationDetail({ session }) {
           )}
           <div className="mb-6 mt-4">
             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-              <div className="bg-accent h-2.5 rounded-full" style={{ width: `${computedProgress}%` }} />
+              <div className="bg-delft_blue-500 h-2.5 rounded-full" style={{ width: `${computedProgress}%` }} />
             </div>
-            <p className="text-neutralDark">{computedProgress}% Complete</p>
+            <p className="text-slate_gray-900">{computedProgress}% Complete</p>
           </div>
         </div>
         {/* Right Column: Secondary Info */}
@@ -1071,7 +1071,7 @@ export default function ApplicationDetail({ session }) {
               <>
                 <button
                   onClick={addImportantDate}
-                  className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                  className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
                   disabled={buttonLoading.addDate}
                 >
                   {buttonLoading.addDate ? (
@@ -1089,7 +1089,7 @@ export default function ApplicationDetail({ session }) {
                 {Object.keys(pendingDateChanges).length > 0 && (
                   <button
                     onClick={saveDateChanges}
-                    className="bg-secondary text-white py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-gray-300"
+                    className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
                     disabled={buttonLoading.saveDates}
                   >
                     {buttonLoading.saveDates ? (
@@ -1474,7 +1474,7 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name && (
                 <button
                   onClick={addRequirement}
-                  className="bg-secondary text-white py-1 px-3 rounded text-sm disabled:bg-gray-300 flex items-center"
+                  className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm disabled:bg-slate_gray-300 flex items-center hover:bg-paynes_gray-500 font-semibold shadow"
                   disabled={
                     !newRequirement.name ||
                     (['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(newRequirement.name) && !newRequirement.criteria_type) ||
@@ -1505,7 +1505,7 @@ export default function ApplicationDetail({ session }) {
           {Object.keys(pendingChanges).length > 0 && (
             <button
               onClick={saveRequirementChanges}
-              className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+              className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
               disabled={buttonLoading.saveRequirements}
             >
               {buttonLoading.saveRequirements ? (
@@ -1641,7 +1641,7 @@ export default function ApplicationDetail({ session }) {
         </select>
         <button
           onClick={saveRecommender}
-          className="bg-secondary text-white py-1 px-3 rounded text-sm flex items-center disabled:bg-gray-300"
+          className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
           disabled={!newRecommender.name || !newRecommender.email || !newRecommender.type || !newRecommender.status || buttonLoading.saveRecommender}
         >
           {buttonLoading.saveRecommender ? (

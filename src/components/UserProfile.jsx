@@ -39,27 +39,27 @@ export default function UserProfile({ session }) {
         <nav className="text-sm text-neutralDark mb-4">
           <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; Profile
         </nav>
-        <h1 className="text-3xl font-bold text-primary mb-6">My Profile</h1>
+  <h1 className="text-3xl font-bold mb-6" style={{ color: '#313E50' }}>My Profile</h1>
         <div className="space-y-4">
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-neutralDark">Email</label>
-            <p className="mt-1 p-2 bg-gray-100 rounded-md text-neutralDark">{session?.user?.email}</p>
+            <label className="text-sm font-medium" style={{ color: '#313E50' }}>Email</label>
+            <p className="mt-1 p-2 bg-charcoal-100 rounded-md text-slate_gray-900">{session?.user?.email}</p>
           </div>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div className="flex flex-col">
-              <label htmlFor="displayName" className="text-sm font-medium text-neutralDark">Display Name</label>
+              <label htmlFor="displayName" className="text-sm font-medium" style={{ color: '#313E50' }}>Display Name</label>
               <input
                 type="text"
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="mt-1 p-2 border border-neutral rounded-md focus:ring-secondary focus:border-secondary"
+                className="mt-1 p-2 border border-charcoal-400 rounded-md focus:ring-delft_blue-500 focus:border-delft_blue-500"
                 placeholder="Enter your name"
               />
             </div>
             <button
               type="submit"
-              className="bg-primary text-white py-2 px-4 rounded w-full md:w-auto hover:bg-primary-dark transition-colors disabled:bg-gray-400"
+              className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded w-full md:w-auto hover:bg-paynes_gray-500 transition-colors font-semibold shadow disabled:bg-slate_gray-300"
               disabled={loading}
             >
               {loading ? 'Saving...' : 'Save Profile'}

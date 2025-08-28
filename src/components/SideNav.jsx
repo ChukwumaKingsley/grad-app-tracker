@@ -8,10 +8,10 @@ export default function SideNav({ expanded, setExpanded, userName }) {
   const location = useLocation();
 
   return (
-    <aside className={`fixed top-0 left-0 h-full bg-neutral-900 text-white flex flex-col transition-all duration-200 z-40 ${expanded ? 'w-56' : 'w-16'} shadow-lg`} style={{minWidth: expanded ? 180 : 64}}>
-      <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-800">
+  <aside className={`fixed top-0 left-0 h-full bg-charcoal-500 text-slate_gray-900 flex flex-col transition-all duration-200 z-40 ${expanded ? 'w-56' : 'w-16'} shadow-lg`} style={{minWidth: expanded ? 180 : 64}}>
+  <div className="flex items-center justify-between px-4 py-4 border-b border-charcoal-400">
         {expanded && (
-          <span className="text-base font-semibold text-neutral-100 truncate" style={{lineHeight: '1.5'}} title={userName}>{userName}</span>
+          <span className="text-base font-semibold truncate" style={{lineHeight: '1.5', color: '#F9FAFB'}} title={userName}>{userName}</span>
         )}
         <button onClick={() => setExpanded(e => !e)} className="focus:outline-none text-white ml-2 flex-shrink-0" style={{marginLeft: expanded ? '1rem' : 0}}>
           <span className="sr-only">Toggle nav</span>
@@ -27,15 +27,15 @@ export default function SideNav({ expanded, setExpanded, userName }) {
         </button>
       </div>
       <nav className="flex-1 flex flex-col mt-4 space-y-2">
-        <NavLink to="/applications" className={({ isActive }) => `flex items-center px-4 py-2 rounded transition-colors ${isActive ? 'bg-neutral-800' : 'hover:bg-neutral-800'} ${expanded ? '' : 'justify-center'}`}> 
+        <NavLink to="/applications" className={({ isActive }) => `flex items-center px-4 py-2 rounded transition-colors ${isActive ? 'bg-delft_blue-500 text-white' : 'hover:bg-paynes_gray-400 hover:text-white'} ${expanded ? '' : 'justify-center'}`}> 
           <FaTable className="mr-2" />
           {expanded && <span>Applications</span>}
         </NavLink>
-        <NavLink to="/timelines" className={({ isActive }) => `flex items-center px-4 py-2 rounded transition-colors ${isActive ? 'bg-neutral-800' : 'hover:bg-neutral-800'} ${expanded ? '' : 'justify-center'}`}> 
+        <NavLink to="/timelines" className={({ isActive }) => `flex items-center px-4 py-2 rounded transition-colors ${isActive ? 'bg-delft_blue-500 text-white' : 'hover:bg-paynes_gray-400 hover:text-white'} ${expanded ? '' : 'justify-center'}`}> 
           <FaList className="mr-2" />
           {expanded && <span>Timelines</span>}
         </NavLink>
-        <NavLink to="/profile" className={({ isActive }) => `flex items-center px-4 py-2 rounded transition-colors ${isActive ? 'bg-neutral-800' : 'hover:bg-neutral-800'} ${expanded ? '' : 'justify-center'}`}> 
+        <NavLink to="/profile" className={({ isActive }) => `flex items-center px-4 py-2 rounded transition-colors ${isActive ? 'bg-delft_blue-500 text-white' : 'hover:bg-paynes_gray-400 hover:text-white'} ${expanded ? '' : 'justify-center'}`}> 
           <FaUser className="mr-2" />
           {expanded && <span>Profile</span>}
         </NavLink>

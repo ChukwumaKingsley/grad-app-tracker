@@ -52,8 +52,8 @@ export default function App() {
     <div className="min-h-screen bg-neutralLight flex">
       <SideNav expanded={navExpanded} setExpanded={setNavExpanded} userName={userName} />
       <div className={`flex-1 flex flex-col transition-all duration-200 ${navExpanded ? 'ml-56' : 'ml-16'}`}>
-        <header className="bg-neutral-900 text-white p-4 w-full sticky top-0 z-30 shadow">
-          <div className="text-2xl font-bold text-center">Grad App Tracker</div>
+        <header className="bg-charcoal-500 text-slate_gray-100 p-4 w-full sticky top-0 z-30 shadow">
+          <div className="text-2xl font-bold text-center" style={{ color: '#F9FAFB' }}>Grad App Tracker</div>
         </header>
         <main className="flex-1 p-4">
           <Routes>

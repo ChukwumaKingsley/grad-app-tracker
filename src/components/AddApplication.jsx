@@ -190,7 +190,7 @@ export default function AddApplication({ session }) {
     <div className="min-h-screen bg-neutralBg p-8">
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold text-primary mb-6">Add New Application</h1>
+  <h1 className="text-3xl font-bold mb-6" style={{ color: '#313E50' }}>Add New Application</h1>
         <form onSubmit={handleSubmit}>
           {/* Reordered fields */}
           <div className="mb-4">
@@ -629,7 +629,7 @@ export default function AddApplication({ session }) {
                 <button
                   type="button"
                   onClick={handleAddRequirement}
-                  className="bg-primary text-white py-2 px-4 rounded text-sm self-end disabled:bg-gray-300"
+                  className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded text-sm self-end disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
                   disabled={
                     (newRequirement.name === 'GPA/Class of Degree' && (!newRequirement.criteria_type || (newRequirement.criteria_type !== 'Unspecified' && !newRequirement.criteria_value))) ||
                     ((newRequirement.name === 'Standardized Test Scores (GRE)' || newRequirement.name === 'English Proficiency Test Scores') && (!newRequirement.test_type || !newRequirement.min_score)) ||
@@ -660,7 +660,7 @@ export default function AddApplication({ session }) {
               </div>
             )}
           </div>
-          <button type="submit" className="bg-primary text-white py-2 px-4 rounded text-center w-full md:w-auto hover:bg-primary-dark transition-colors">
+          <button type="submit" className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded text-center w-full md:w-auto hover:bg-paynes_gray-500 transition-colors font-semibold shadow">
             Save Application
           </button>
         </form>
