@@ -3,6 +3,10 @@
 	.bg-neutral-800 { background-color: #27272a !important; }
 	.text-neutral-300 { color: #d4d4d8 !important; }
 }
+
+html, body {
+  overflow-x: hidden !important;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

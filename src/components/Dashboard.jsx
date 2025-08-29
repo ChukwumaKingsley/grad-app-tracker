@@ -178,10 +178,10 @@ export default function Dashboard({ session }) {
     <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 md:px-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold" style={{ color: '#313E50' }}>Applications</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button
             aria-label="Grid view"
-            className={`p-2 rounded font-semibold shadow transition-colors
+            className={`p-1 sm:p-1.5 md:p-2 rounded font-semibold shadow transition-colors
               ${viewType === 'grid' ? 'bg-delft_blue-500' : 'bg-white'}
               ${viewType !== 'grid' ? 'hover:bg-blue-100' : 'hover:bg-delft_blue-700'}
               border border-slate_gray-200'
@@ -190,7 +190,7 @@ export default function Dashboard({ session }) {
             style={{ outline: viewType === 'grid' ? '2px solid #243A5A' : 'none' }}
           >
             <FaThLarge
-              size={20}
+              size={12}
               className={
                 viewType === 'grid'
                   ? 'text-white'
@@ -200,7 +200,7 @@ export default function Dashboard({ session }) {
           </button>
           <button
             aria-label="List view"
-            className={`p-2 rounded font-semibold shadow transition-colors
+            className={`p-1 sm:p-1.5 md:p-2 rounded font-semibold shadow transition-colors
               ${viewType === 'list' ? 'bg-delft_blue-500' : 'bg-white'}
               ${viewType !== 'list' ? 'hover:bg-blue-100' : 'hover:bg-delft_blue-700'}
               border border-slate_gray-200'
@@ -209,7 +209,7 @@ export default function Dashboard({ session }) {
             style={{ outline: viewType === 'list' ? '2px solid #243A5A' : 'none' }}
           >
             <FaList
-              size={20}
+              size={12}
               className={
                 viewType === 'list'
                   ? 'text-white'
@@ -217,9 +217,9 @@ export default function Dashboard({ session }) {
               }
             />
           </button>
-          <span className="w-2" />
-          <Link to="/add" className="p-2 rounded-full bg-delft_blue-500 text-slate_gray-100 hover:bg-paynes_gray-500 flex items-center justify-center shadow" title="Add Application">
-            <FaPlus size={20} />
+          <span className="w-1 sm:w-2" />
+          <Link to="/add" className="p-1 sm:p-1.5 md:p-2 rounded-full bg-delft_blue-500 text-slate_gray-100 hover:bg-paynes_gray-500 flex items-center justify-center shadow" title="Add Application">
+            <FaPlus size={12} />
           </Link>
         </div>
       </div>
@@ -372,7 +372,7 @@ export default function Dashboard({ session }) {
       {/* Filtered applications for both views */}
       {loading ? (
         viewType === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {Array(3).fill(0).map((_, index) => (
               <SkeletonCard key={index} />
             ))}
@@ -426,25 +426,25 @@ export default function Dashboard({ session }) {
               return (
                 <div
                   key={app.id}
-                  className={`rounded-lg shadow-md p-5 bg-white border hover:shadow-lg transition cursor-pointer flex flex-col gap-2 ${statusColors[app.status] || statusColors.default}`}
+                  className={`rounded-lg shadow-md p-3 sm:p-5 bg-white border hover:shadow-lg transition cursor-pointer flex flex-col gap-2 ${statusColors[app.status] || statusColors.default}`}
                   title={`View details for ${app.program}`}
                   onClick={() => window.location.href = `/application/${app.id}`}
                 >
                   {/* ...existing code... */}
                   <div className="flex items-center justify-between mb-1">
-                    <h2 className="font-bold text-lg truncate" style={{ color: '#313E50' }}>{app.program}</h2>
-                    <span className={`text-xs px-2 py-1 rounded ${getLevelTag(app.level)} bg-slate-100 font-bold`} title={app.level}>{getLevelShort(app.level)}</span>
+                    <h2 className="font-bold text-base sm:text-lg truncate" style={{ color: '#313E50' }}>{app.program}</h2>
+                    <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${getLevelTag(app.level)} bg-slate-100 font-bold`} title={app.level}>{getLevelShort(app.level)}</span>
                   </div>
-                  <div className="text-sm text-slate_gray-700 truncate" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
+                  <div className="text-xs sm:text-sm text-slate_gray-700 truncate" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
                     {[app.country, app.state, app.city].filter(Boolean).join(', ')}
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-xs px-2 py-1 rounded ${getStatusStyles(app.status)} bg-white border`} title={app.status}>{app.status}</span>
-                    {app.funding_status && <span className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 border" title={app.funding_status}>{app.funding_status}</span>}
+                  <div className="flex items-center gap-1 sm:gap-2 mt-1">
+                    <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${getStatusStyles(app.status)} bg-white border`} title={app.status}>{app.status}</span>
+                    {app.funding_status && <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-indigo-50 text-indigo-700 border" title={app.funding_status}>{app.funding_status}</span>}
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1 sm:gap-2 mt-1">
                     {app.nearestDate ? (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-[10px] sm:text-xs text-gray-500">
                         {app.nearestDate.name}: {formatDateCountdown(app.nearestDate.date).formatted}
                         {formatDateCountdown(app.nearestDate.date).countdown && (
                           <span> (
@@ -453,17 +453,17 @@ export default function Dashboard({ session }) {
                         )}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-400">No upcoming date</span>
+                      <span className="text-[10px] sm:text-xs text-gray-400">No upcoming date</span>
                     )}
                   </div>
                   <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-1 sm:h-2.5">
                       <div
-                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                        className="bg-blue-600 h-2 sm:h-2.5 rounded-full transition-all duration-500"
                         style={{ width: `${app.progress || 0}%` }}
                       />
                     </div>
-                    <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
+                    <span className="text-gray-700 font-semibold text-[10px] sm:text-xs">{app.progress}%</span>
                   </div>
                 </div>
               );
