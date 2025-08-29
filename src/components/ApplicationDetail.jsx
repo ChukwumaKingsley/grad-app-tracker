@@ -36,7 +36,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SkeletonDetail } from './SkeletonLoader';
-import { FaPen, FaTrash, FaEllipsisV } from 'react-icons/fa';
+import { FaPen, FaTrash, FaEllipsisV, FaEye } from 'react-icons/fa';
 import debounce from 'lodash/debounce';
 
 export default function ApplicationDetail({ session }) {
@@ -70,6 +70,7 @@ export default function ApplicationDetail({ session }) {
   const [editingDateId, setEditingDateId] = useState(null);
   const [showOptions, setShowOptions] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [newDateDraft, setNewDateDraft] = useState(null);
   const [password, setPassword] = useState('');
   const inFlightWrite = useRef(false);
 
@@ -248,9 +249,19 @@ export default function ApplicationDetail({ session }) {
     toast.success('Application changes saved');
   };
 
-  const addImportantDate = async () => {
+  // Start adding a new date by showing inline inputs (no request yet)
+  const addImportantDate = () => {
+    setNewDateDraft({ name: '', date: new Date().toISOString().split('T')[0] });
+  };
+
+  // Persist the drafted date to the server
+  const createImportantDate = async () => {
+    if (!newDateDraft || !newDateDraft.name || !newDateDraft.date) {
+      toast.error('Please provide both name and date');
+      return;
+    }
     setButtonLoading((prev) => ({ ...prev, addDate: true }));
-    const newDate = { application_id: id, name: 'New Date', date: new Date().toISOString().split('T')[0] };
+    const newDate = { application_id: id, name: newDateDraft.name, date: newDateDraft.date };
     const { data, error } = await supabase.from('important_dates').insert([newDate]).select().single();
     setButtonLoading((prev) => ({ ...prev, addDate: false }));
     if (error) {
@@ -258,6 +269,7 @@ export default function ApplicationDetail({ session }) {
       console.error(error);
     } else {
       setImportantDates([...importantDates, data]);
+      setNewDateDraft(null);
       toast.success('Important date added');
     }
   };
@@ -709,39 +721,85 @@ export default function ApplicationDetail({ session }) {
   if (loading) return <SkeletonDetail />;
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
-      <nav className="text-sm text-neutralDark mb-4">
-        <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.school_name || app.program}</span> <span className="text-gray-500">/ {app.program}</span>
-      </nav>
-      <div className="flex justify-between items-center mb-6">
-  <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.school_name || app.program}</h2>
-  <div className="text-sm text-gray-500">{app.program}</div>
-        <div className="hidden md:flex items-center space-x-2">
-          <button onClick={() => setEditMode(!editMode)} className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-paynes_gray-500 font-semibold shadow">
-            {editMode ? 'View Mode' : 'Edit Mode'}
-          </button>
-          <button onClick={() => setShowDeleteModal(true)} className="bg-red-600 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-red-700 font-semibold shadow">
-            Delete
-          </button>
+    <>
+      <div className="container mx-auto p-4 md:p-8">
+        <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
+        <nav className="text-sm text-neutralDark mb-4">
+          <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.school_name || app.program}</span> <span className="text-gray-500">/ {app.program}</span>
+        </nav>
+        <div className="flex justify-between items-center mb-6">
+    {editMode ? (
+      <div className="flex flex-col w-full md:w-2/3">
+        <label className="text-xs text-gray-400 mb-1">School</label>
+        <input
+          type="text"
+          name="school_name"
+          value={appChanges.school_name ?? app.school_name ?? ''}
+          onChange={(e) => updateAppField('school_name', e.target.value)}
+          className="p-2 border border-gray-300 rounded mb-2 text-2xl md:text-3xl font-bold"
+          placeholder="School name"
+        />
+        <div className="flex gap-2 items-start">
+          <div className="flex-1">
+            <label className="text-xs text-gray-400">Program</label>
+            <input
+              type="text"
+              name="program"
+              value={appChanges.program ?? app.program ?? ''}
+              onChange={(e) => updateAppField('program', e.target.value)}
+              className="p-1 border border-gray-300 rounded text-sm text-gray-500 w-full"
+              placeholder="Program / Degree"
+            />
+          </div>
+          <div className="w-1/3">
+            <label className="text-xs text-gray-400">Department</label>
+            <input
+              type="text"
+              name="department"
+              value={appChanges.department ?? app.department ?? ''}
+              onChange={(e) => updateAppField('department', e.target.value)}
+              className="p-1 border border-gray-300 rounded mt-0 text-sm w-full"
+              placeholder="Department"
+            />
+          </div>
+          <div className="w-1/3">
+            <label className="text-xs text-gray-400">Faculty</label>
+            <input
+              type="text"
+              name="faculty"
+              value={appChanges.faculty ?? app.faculty ?? ''}
+              onChange={(e) => updateAppField('faculty', e.target.value)}
+              className="p-1 border border-gray-300 rounded mt-0 text-sm w-full"
+              placeholder="Faculty (optional)"
+            />
+          </div>
         </div>
-        <div className="md:hidden relative">
-          <button onClick={() => setShowOptions(!showOptions)} className="text-gray-600">
-            <FaEllipsisV size={24} />
-          </button>
-          {showOptions && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-              <button onClick={() => { setEditMode(!editMode); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-slate_gray-900 hover:bg-slate_gray-100">
-                {editMode ? 'View Mode' : 'Edit Mode'}
-              </button>
-              <button onClick={() => { setShowDeleteModal(true); setShowOptions(false); }} className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100">
-                <span className="text-red-600 font-semibold">Delete Application</span>
-              </button>
-            </div>
-          )}
-        </div>
+
+        
       </div>
+    ) : (
+      <>
+        <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.school_name || app.program}</h2>
+        <div className="mt-2 text-sm text-gray-700 space-y-1">
+          <div>
+            <span className="text-xs text-gray-400 mr-2">Program</span>
+            <span>{app.program || <span className="text-gray-400">(none)</span>}</span>
+          </div>
+          <div>
+            <span className="text-xs text-gray-400 mr-2">Department</span>
+            <span>{app.department || <span className="text-gray-400">(none)</span>}</span>
+          </div>
+          <div>
+            <span className="text-xs text-gray-400 mr-2">Faculty</span>
+            <span>{app.faculty || <span className="text-gray-400">(none)</span>}</span>
+          </div>
+          {/* action buttons removed from header - persistent footer will render at page bottom */}
+        </div>
+        </>
+    )}
+    {/* action buttons moved to footer for less visual prominence */}
+        </div>
 
       {showDeleteModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="my-modal">
@@ -1043,103 +1101,106 @@ export default function ApplicationDetail({ session }) {
           <h3 className="text-xl font-bold mb-4 text-neutralDark">Important Dates</h3>
           <ul className="mb-6">
             {importantDates.map((date) => (
-              <li key={date.id} className="mb-2 flex items-center space-x-2">
-                {editMode && editingDateId === date.id ? (
-                  <>
-                    <input
-                      type="text"
-                      name={`date-${date.id}-name`}
-                      autoComplete="off"
-                      value={pendingDateChanges[date.id]?.name || date.name}
-                      onChange={(e) => updateDateField(date.id, 'name', e.target.value)}
-                      className="p-1 border border-gray-300 rounded flex-1"
-                    />
-                    <input
-                      type="date"
-                      name={`date-${date.id}-date`}
-                      autoComplete="off"
-                      value={pendingDateChanges[date.id]?.date || date.date}
-                      onChange={(e) => updateDateField(date.id, 'date', e.target.value)}
-                      className="p-1 border border-gray-300 rounded flex-1"
-                    />
-                    <button
-                      onClick={() => setEditingDateId(null)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span>{date.name}: {date.date}</span>
-                    {editMode && (
-                      <div className="flex space-x-2">
+              <li key={date.id} className="mb-2 flex flex-col md:flex-row md:items-center md:space-x-4">
+                <div className="flex-1">
+                  {editMode && editingDateId === date.id ? (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        name={`date-${date.id}-name`}
+                        autoComplete="off"
+                        value={pendingDateChanges[date.id]?.name || date.name}
+                        onChange={(e) => updateDateField(date.id, 'name', e.target.value)}
+                        className="p-1 border border-gray-300 rounded flex-1"
+                      />
+                      <input
+                        type="date"
+                        name={`date-${date.id}-date`}
+                        autoComplete="off"
+                        value={pendingDateChanges[date.id]?.date || date.date}
+                        onChange={(e) => updateDateField(date.id, 'date', e.target.value)}
+                        className="p-1 border border-gray-300 rounded"
+                      />
+                    </div>
+                  ) : (
+                    <span className="font-medium">{date.name}</span>
+                  )}
+                  <div className="text-sm text-gray-500">{date.date}</div>
+                </div>
+                {editMode && (
+                  <div className="mt-2 md:mt-0 flex gap-2 items-center">
+                    {editingDateId === date.id ? (
+                      <>
+                        <button onClick={() => setEditingDateId(null)} className="px-3 py-1 border rounded text-sm">Cancel</button>
+                        <button onClick={saveDateChanges} className="px-3 py-1 bg-delft_blue-500 text-white rounded text-sm">Save</button>
+                      </>
+                    ) : (
+                      <>
                         <button
                           onClick={() => setEditingDateId(date.id)}
-                          className="text-blue-500 hover:text-blue-700"
+                          className="px-2 py-1 border rounded text-sm text-blue-600"
                           disabled={buttonLoading[`edit-date-${date.id}`]}
                         >
                           <FaPen />
                         </button>
                         <button
                           onClick={() => deleteImportantDate(date.id)}
-                          className="text-red-500 hover:text-red-700"
+                          className="px-2 py-1 border rounded text-sm text-red-600"
                           disabled={buttonLoading[`delete-date-${date.id}`]}
                         >
-                          {buttonLoading[`delete-date-${date.id}`] ? (
-                            <svg className="animate-spin h-5 w-5 text-red-500" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                            </svg>
-                          ) : (
-                            <FaTrash />
-                          )}
+                          {buttonLoading[`delete-date-${date.id}`] ? '...' : <FaTrash />}
                         </button>
-                      </div>
+                      </>
                     )}
-                  </>
+                  </div>
                 )}
               </li>
             ))}
             {editMode && (
-              <>
-                <button
-                  onClick={addImportantDate}
-                  className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
-                  disabled={buttonLoading.addDate}
-                >
-                  {buttonLoading.addDate ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Adding...
-                    </>
-                  ) : (
-                    'Add Important Date'
-                  )}
-                </button>
+              <div className="mt-2 flex flex-col md:flex-row md:items-center md:gap-3">
+                {!newDateDraft ? (
+                  <button
+                    onClick={addImportantDate}
+                    className="px-3 py-1 bg-delft_blue-500 text-white rounded text-sm"
+                    disabled={buttonLoading.addDate}
+                  >
+                    Add Important Date
+                  </button>
+                ) : (
+                  <div className="flex flex-col w-full">
+                    <div className="flex gap-2 w-full">
+                      <input
+                        type="text"
+                        name="new-date-name"
+                        placeholder="Event name"
+                        value={newDateDraft.name}
+                        onChange={(e) => setNewDateDraft({ ...newDateDraft, name: e.target.value })}
+                        className="p-1 border border-gray-300 rounded flex-1"
+                      />
+                      <input
+                        type="date"
+                        name="new-date-date"
+                        value={newDateDraft.date}
+                        onChange={(e) => setNewDateDraft({ ...newDateDraft, date: e.target.value })}
+                        className="p-1 border border-gray-300 rounded w-40"
+                      />
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => setNewDateDraft(null)} className="px-3 py-1 border rounded text-sm">Cancel</button>
+                      <button onClick={createImportantDate} className="px-3 py-1 bg-delft_blue-500 text-white rounded text-sm" disabled={buttonLoading.addDate}>Save New Date</button>
+                    </div>
+                  </div>
+                )}
                 {Object.keys(pendingDateChanges).length > 0 && (
                   <button
                     onClick={saveDateChanges}
-                    className="bg-delft_blue-500 text-slate_gray-100 py-1 px-3 rounded mt-2 text-sm flex items-center disabled:bg-slate_gray-300 hover:bg-paynes_gray-500 font-semibold shadow"
+                    className="px-3 py-1 bg-delft_blue-500 text-white rounded text-sm"
                     disabled={buttonLoading.saveDates}
                   >
-                    {buttonLoading.saveDates ? (
-                      <>
-                        <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Saving...
-                      </>
-                    ) : (
-                      'Save Date Changes'
-                    )}
+                    {buttonLoading.saveDates ? 'Saving...' : 'Save Date Changes'}
                   </button>
                 )}
-              </>
+              </div>
             )}
           </ul>
         </div>
@@ -1746,7 +1807,37 @@ export default function ApplicationDetail({ session }) {
     )}
   </>
 )}
+      {/* Footer actions: placed as the last elements of the card (non-floating) */}
+      <div className="mt-6 pt-4 border-t border-neutralLight flex justify-end items-center gap-3">
+        <button
+          onClick={() => {
+            if (editMode) {
+              // discard unsaved app/requirement/date changes when cancelling edit mode
+              setEditMode(false);
+              setAppChanges({});
+              setPendingChanges({});
+              setPendingDateChanges({});
+              setNewRequirement((prev) => ({ ...prev, name: '' }));
+              setNewDateDraft(null);
+              setNewRecommender(null);
+            } else {
+              setEditMode(true);
+            }
+          }}
+          className="px-4 py-2 bg-delft_blue-500 text-white rounded hover:bg-paynes_gray-500 font-semibold flex items-center gap-2"
+        >
+          <FaPen /> <span>{editMode ? 'View' : 'Edit'}</span>
+        </button>
+
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
+        >
+          <FaTrash /> <span>Delete</span>
+        </button>
       </div>
     </div>
+    </div>
+    </>
   );
 }
