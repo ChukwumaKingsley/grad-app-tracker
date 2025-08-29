@@ -45,9 +45,52 @@ export default function Dashboard() {
     async function load() {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from('applications').select('*');
+        // fetch applications
+        const { data: apps, error } = await supabase.from('applications').select('*');
         if (error) console.error(error);
-        if (mounted) setApplications(data || []);
+
+        let appsWithNearest = apps || [];
+
+        // fetch important_dates for these applications and compute nearest date per application
+        const ids = appsWithNearest.map(a => a.id).filter(Boolean);
+        if (ids.length > 0) {
+          try {
+            const { data: dates } = await supabase.from('important_dates')
+              .select('id, application_id, name, date')
+              .in('application_id', ids)
+              .order('date', { ascending: true });
+
+            // group dates by application_id
+            const byApp = {};
+            (dates || []).forEach(d => {
+              if (!byApp[d.application_id]) byApp[d.application_id] = [];
+              byApp[d.application_id].push(d);
+            });
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            appsWithNearest = appsWithNearest.map(app => {
+              const list = byApp[app.id] || [];
+              if (list.length === 0) return { ...app, nearestDate: null };
+
+              // find earliest date >= today, else latest past date
+              const future = list.filter(d => new Date(d.date).setHours(0,0,0,0) >= today.getTime());
+              let picked = null;
+              if (future.length > 0) {
+                picked = future.reduce((a,b) => new Date(a.date) < new Date(b.date) ? a : b);
+              } else {
+                // pick the most recent past date
+                picked = list.reduce((a,b) => new Date(a.date) > new Date(b.date) ? a : b);
+              }
+              return { ...app, nearestDate: picked };
+            });
+          } catch (e) {
+            console.error('Error fetching important_dates', e);
+          }
+        }
+
+        if (mounted) setApplications(appsWithNearest || []);
       } catch (err) {
         console.error(err);
         if (mounted) setApplications([]);
@@ -93,10 +136,13 @@ export default function Dashboard() {
   } else if (viewType === 'grid') {
     content = (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredApplications.map(app => (
-          <div key={app.id} className="rounded-lg shadow-md p-3 sm:p-5 bg-white border hover:shadow-lg transition cursor-pointer" onClick={() => window.location.href = `/application/${app.id}`}>
+          {filteredApplications.map(app => (
+          <div key={app.id} className="rounded-lg shadow-md p-3 sm:p-5 bg-white border hover:shadow-lg transition cursor-pointer overflow-hidden" onClick={() => window.location.href = `/application/${app.id}`}>
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm sm:text-base truncate">{app.program}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base truncate block" title={app.school_name || app.program}>{app.school_name || app.program}</h3>
+                <div className="text-xs text-gray-500 truncate" title={app.program}>{app.program}</div>
+              </div>
               <LevelTag level={app.level} />
             </div>
             <div className="text-xs text-slate_gray-700 mt-1 truncate">{[app.country, app.state, app.city].filter(Boolean).join(', ')}</div>
@@ -104,6 +150,10 @@ export default function Dashboard() {
               <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded bg-white border">{app.status}</span>
               {app.funding_status && <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border">{app.funding_status}</span>}
             </div>
+            {/* truncate long description field if present to keep layout compact and ensure date remains visible */}
+            {app.description && (
+              <div className="text-sm text-gray-600 mt-2 truncate" title={app.description} style={{ maxWidth: '100%' }}>{app.description}</div>
+            )}
           </div>
         ))}
       </div>
@@ -116,7 +166,10 @@ export default function Dashboard() {
           {filteredApplications.map(app => (
             <div key={app.id} className="rounded-lg shadow-sm p-3 bg-white border" onClick={() => window.location.href = `/application/${app.id}`}>
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-sm">{app.program}</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm truncate">{app.school_name || app.program}</h3>
+                  <div className="text-xs text-gray-500 truncate">{app.program}</div>
+                </div>
                 <LevelTag level={app.level} />
               </div>
               <div className="text-xs text-slate_gray-700 mt-1">{[app.country, app.state, app.city].filter(Boolean).join(', ')}</div>
@@ -132,7 +185,7 @@ export default function Dashboard() {
               <table className="min-w-[900px] table-auto text-left text-sm bg-white border border-gray-200">
             <thead className="bg-gray-100">
               <tr>
-                <th className="px-3 py-2">Program</th>
+                <th className="px-3 py-2">School</th>
                 <th className="px-3 py-2">Location</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Level</th>
@@ -142,8 +195,13 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {filteredApplications.map(app => (
-                <tr key={app.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => window.location.href = `/application/${app.id}`}>
-                  <td className="px-3 py-2 font-medium whitespace-nowrap">{app.program}</td>
+        <tr key={app.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => window.location.href = `/application/${app.id}`}>
+                  <td className="px-3 py-2 font-medium whitespace-nowrap">
+                    <div className="min-w-0">
+          <div className="truncate" title={app.school_name || app.program}>{app.school_name || app.program}</div>
+          <div className="text-xs text-gray-500 truncate" title={app.program}>{app.program}</div>
+                    </div>
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap">{[app.country, app.state, app.city].filter(Boolean).join(', ')}</td>
                   <td className="px-3 py-2"><span className="text-[10px] px-2 py-0.5 rounded bg-white border">{app.status}</span></td>
                   <td className="px-3 py-2"><LevelTag level={app.level} /></td>
@@ -288,13 +346,16 @@ export default function Dashboard() {
               return (
                 <div
                   key={app.id}
-                  className={`rounded-lg shadow-md p-5 bg-white border hover:shadow-lg transition cursor-pointer flex flex-col gap-2 ${statusColors[app.status] || statusColors.default}`}
-                  title={`View details for ${app.program}`}
+                  className={`rounded-lg shadow-md p-5 bg-white border hover:shadow-lg transition cursor-pointer flex flex-col gap-2 overflow-hidden ${statusColors[app.status] || statusColors.default}`}
+                  title={`View details for ${app.school_name || app.program}`}
                   onClick={() => window.location.href = `/application/${app.id}`}
                 >
                   {/* ...existing code... */}
                   <div className="flex items-center justify-between mb-1">
-                    <h2 className="font-bold text-lg truncate" style={{ color: '#313E50' }}>{app.program}</h2>
+                    <div className="flex-1">
+                      <h2 className="font-bold text-lg truncate block" style={{ color: '#313E50' }}>{app.school_name || app.program}</h2>
+                      <div className="text-sm text-gray-500 truncate">{app.program}</div>
+                    </div>
                     <span className={`text-xs px-2 py-1 rounded ${getLevelTag(app.level)} bg-slate-100 font-bold`} title={app.level}>{getLevelShort(app.level)}</span>
                   </div>
                   <div className="text-sm text-slate_gray-700 truncate" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
@@ -338,7 +399,7 @@ export default function Dashboard() {
               <table className="w-full table-auto text-left text-sm bg-white border border-gray-200">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="px-3 py-2">Program</th>
+                    <th className="px-3 py-2">School</th>
                     <th className="px-3 py-2">Location</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Level</th>
@@ -349,7 +410,12 @@ export default function Dashboard() {
                 <tbody>
                   {filteredApplications.map(app => (
                     <tr key={app.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => window.location.href = `/application/${app.id}`}>
-                      <td className="px-3 py-2 font-medium whitespace-nowrap">{app.program}</td>
+                      <td className="px-3 py-2 font-medium whitespace-nowrap">
+                        <div className="min-w-0">
+                          <div className="truncate">{app.school_name || app.program}</div>
+                          <div className="text-xs text-gray-500 truncate">{app.program}</div>
+                        </div>
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap">{[app.country, app.state, app.city].filter(Boolean).join(', ')}</td>
                       <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-white border">{app.status}</span></td>
                       <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold">{(app.level || '').toLowerCase().includes('phd') ? 'PhD' : 'MSc'}</span></td>

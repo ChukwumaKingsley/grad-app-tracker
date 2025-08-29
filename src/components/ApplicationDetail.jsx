@@ -713,10 +713,11 @@ export default function ApplicationDetail({ session }) {
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
       <nav className="text-sm text-neutralDark mb-4">
-        <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.program}</span>
+        <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.school_name || app.program}</span> <span className="text-gray-500">/ {app.program}</span>
       </nav>
       <div className="flex justify-between items-center mb-6">
-  <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.program}</h2>
+  <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#313E50' }}>{app.school_name || app.program}</h2>
+  <div className="text-sm text-gray-500">{app.program}</div>
         <div className="hidden md:flex items-center space-x-2">
           <button onClick={() => setEditMode(!editMode)} className="bg-delft_blue-500 text-slate_gray-100 py-2 px-4 rounded text-sm md:text-base hover:bg-paynes_gray-500 font-semibold shadow">
             {editMode ? 'View Mode' : 'Edit Mode'}
@@ -1167,6 +1168,8 @@ export default function ApplicationDetail({ session }) {
               <td className="p-2">
                 <input
                   type="checkbox"
+                  name={`req-${req.id}-is_completed`}
+                  autoComplete="off"
                   checked={req.is_completed}
                   onChange={(e) => toggleRequirement(req.id, e.target.checked)}
                   disabled={editMode || buttonLoading[`req-${req.id}`]}
@@ -1301,6 +1304,8 @@ export default function ApplicationDetail({ session }) {
                       <label>
                         <input
                           type="checkbox"
+                          name={`app-fee-waived`}
+                          autoComplete="off"
                           checked={appChanges.fee_waived ?? app.fee_waived}
                           onChange={() => {
                             const newWaived = !(appChanges.fee_waived ?? app.fee_waived);
@@ -1370,6 +1375,8 @@ export default function ApplicationDetail({ session }) {
             <label className="block text-neutralDark mb-1">Add Requirement</label>
             <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 w-full md:w-3/4">
               <select
+                name="new_requirement_name"
+                autoComplete="off"
                 value={newRequirement.name}
                 onChange={(e) => setNewRequirement({ ...newRequirement, name: e.target.value, criteria_type: null, criteria_value: null, min_score: null, test_type: null, waived: false, conversion: null, type: null, num_recommenders: '', application_fee: app.application_fee, fee_waived: app.fee_waived, fee_waiver_details: app.fee_waiver_details })}
                 className="p-1 border border-gray-300 rounded flex-1"
@@ -1510,16 +1517,18 @@ export default function ApplicationDetail({ session }) {
                     required={!newRequirement.fee_waived}
                   />
                   <label className="flex items-center flex-1">
-                    <input
-                      type="checkbox"
-                      checked={newRequirement.fee_waived}
-                      onChange={() => {
-                        const newWaived = !newRequirement.fee_waived;
-                        setNewRequirement({ ...newRequirement, fee_waived: newWaived });
-                        updateAppField('fee_waived', newWaived);
-                      }}
-                    />{' '}
-                    <span className="ml-1 text-sm">Fee Waived</span>
+                      <input
+                        type="checkbox"
+                        name="new_req_fee_waived"
+                        autoComplete="off"
+                        checked={newRequirement.fee_waived}
+                        onChange={() => {
+                          const newWaived = !newRequirement.fee_waived;
+                          setNewRequirement({ ...newRequirement, fee_waived: newWaived });
+                          updateAppField('fee_waived', newWaived);
+                        }}
+                      />{' '}
+                      <span className="ml-1 text-sm">Fee Waived</span>
                   </label>
                   {newRequirement.fee_waived && (
                     <input
@@ -1674,7 +1683,7 @@ export default function ApplicationDetail({ session }) {
         <input
           type="text"
           name="new_recommender_name"
-          autoComplete="off"
+          autoComplete="name"
           value={newRecommender.name || ''}
           onChange={(e) => setNewRecommender({ ...newRecommender, name: e.target.value })}
           className="p-1 border border-gray-300 rounded flex-1"
@@ -1684,7 +1693,7 @@ export default function ApplicationDetail({ session }) {
         <input
           type="email"
           name="new_recommender_email"
-          autoComplete="off"
+          autoComplete="email"
           value={newRecommender.email || ''}
           onChange={(e) => setNewRecommender({ ...newRecommender, email: e.target.value })}
           className="p-1 border border-gray-300 rounded flex-1"
@@ -1692,6 +1701,8 @@ export default function ApplicationDetail({ session }) {
           required
         />
         <select
+          name="new_recommender_type"
+          autoComplete="off"
           value={newRecommender.type || ''}
           onChange={(e) => setNewRecommender({ ...newRecommender, type: e.target.value })}
           className="p-1 border border-gray-300 rounded flex-1"
@@ -1702,6 +1713,8 @@ export default function ApplicationDetail({ session }) {
           <option>Professional</option>
         </select>
         <select
+          name="new_recommender_status"
+          autoComplete="off"
           value={newRecommender.status || 'Identified'}
           onChange={(e) => setNewRecommender({ ...newRecommender, status: e.target.value })}
           className={`p-1 border border-gray-300 rounded flex-1 ${getStatusColor(newRecommender.status || 'Identified', 'recommender')}`}
