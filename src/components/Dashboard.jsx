@@ -138,12 +138,20 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredApplications.map(app => (
           <div key={app.id} className="rounded-lg shadow-md p-3 sm:p-5 bg-white border hover:shadow-lg transition cursor-pointer overflow-hidden" onClick={() => window.location.href = `/application/${app.id}`}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm sm:text-base truncate block" title={app.school_name || app.program}>{app.school_name || app.program}</h3>
+                <h3
+                  className="font-semibold text-sm sm:text-base block"
+                  title={app.school_name || app.program}
+                  style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                >
+                  {app.school_name || app.program}
+                </h3>
                 <div className="text-xs text-gray-500 truncate" title={app.program}>{app.program}</div>
               </div>
-              <LevelTag level={app.level} />
+              <div className="flex-shrink-0 ml-2">
+                <LevelTag level={app.level} />
+              </div>
             </div>
             <div className="text-xs text-slate_gray-700 mt-1 truncate">{[app.country, app.state, app.city].filter(Boolean).join(', ')}</div>
             <div className="flex items-center gap-2 mt-2">
@@ -351,12 +359,18 @@ export default function Dashboard() {
                   onClick={() => window.location.href = `/application/${app.id}`}
                 >
                   {/* ...existing code... */}
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-start justify-between mb-1">
                     <div className="flex-1">
-                      <h2 className="font-bold text-lg truncate block" style={{ color: '#313E50' }}>{app.school_name || app.program}</h2>
+                      <h2
+                        className="font-bold text-lg block"
+                        style={{ color: '#313E50', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                        title={app.school_name || app.program}
+                      >
+                        {app.school_name || app.program}
+                      </h2>
                       <div className="text-sm text-gray-500 truncate">{app.program}</div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded ${getLevelTag(app.level)} bg-slate-100 font-bold`} title={app.level}>{getLevelShort(app.level)}</span>
+                    <span className={`text-xs px-2 py-1 rounded ${getLevelTag(app.level)} bg-slate-100 font-bold ml-2`} title={app.level}>{getLevelShort(app.level)}</span>
                   </div>
                   <div className="text-sm text-slate_gray-700 truncate" title={[app.country, app.state, app.city].filter(Boolean).join(', ')}>
                     {[app.country, app.state, app.city].filter(Boolean).join(', ')}
