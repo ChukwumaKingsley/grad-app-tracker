@@ -470,12 +470,39 @@ export default function Dashboard({ session }) {
             })}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            {/* ...existing table code, but use filteredApplications... */}
-            <table className="min-w-full text-left text-sm rounded-lg overflow-hidden">
-              {/* ...existing thead and tbody code, but use filteredApplications... */}
-              {/* ...existing code... */}
-            </table>
+          <div className="w-full overflow-x-auto">
+            {/* Constrain vertical space so the table scrolls internally rather than extending page width/height */}
+            <div style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+              <table className="w-full table-auto text-left text-sm bg-white border border-gray-200">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2">Program</th>
+                    <th className="px-3 py-2">Location</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Level</th>
+                    <th className="px-3 py-2">Next Date</th>
+                    <th className="px-3 py-2">Progress</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredApplications.map(app => (
+                    <tr key={app.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => window.location.href = `/application/${app.id}`}>
+                      <td className="px-3 py-2 font-medium whitespace-nowrap">{app.program}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{[app.country, app.state, app.city].filter(Boolean).join(', ')}</td>
+                      <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-white border">{app.status}</span></td>
+                      <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold">{(app.level || '').toLowerCase().includes('phd') ? 'PhD' : 'MSc'}</span></td>
+                      <td className="px-3 py-2 text-gray-600">{app.nearestDate ? `${app.nearestDate.name}: ${formatDateCountdown(app.nearestDate.date).formatted}` : '—'}</td>
+                      <td className="px-3 py-2">
+                        <div className="w-36 bg-gray-200 rounded-full h-2 mb-1">
+                          <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${app.progress || 0}%` }} />
+                        </div>
+                        <span className="text-gray-700 font-semibold text-xs">{app.progress}%</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}

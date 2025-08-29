@@ -7,6 +7,9 @@ import 'react-toastify/dist/ReactToastify.css';
 export default function UserProfile({ session }) {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     if (session?.user?.user_metadata?.full_name) {
@@ -63,6 +66,50 @@ export default function UserProfile({ session }) {
               {loading ? 'Saving...' : 'Save Profile'}
             </button>
           </form>
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold" style={{ color: '#313E50' }}>Change Password</h2>
+            <p className="text-sm text-gray-500 mb-3">Choose a new password. Minimum 8 characters.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newPassword || newPassword.length < 8) {
+                toast.error('Password must be at least 8 characters');
+                return;
+              }
+              if (newPassword !== confirmPassword) {
+                toast.error('Passwords do not match');
+                return;
+              }
+              setPwLoading(true);
+              try {
+                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                if (error) {
+                  toast.error('Error changing password');
+                  console.error('change password error', error);
+                } else {
+                  toast.success('Password changed successfully');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }
+              } catch (err) {
+                console.error(err);
+                toast.error('Unexpected error');
+              } finally {
+                setPwLoading(false);
+              }
+            }} className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">New password</label>
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="mt-1 p-2 w-full border rounded-md" placeholder="New password" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Confirm password</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="mt-1 p-2 w-full border rounded-md" placeholder="Confirm password" />
+              </div>
+              <div>
+                <button type="submit" className="bg-red-600 text-white py-2 px-4 rounded w-full md:w-auto font-semibold" disabled={pwLoading}>{pwLoading ? 'Updating...' : 'Change password'}</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
