@@ -635,33 +635,37 @@ export default function ApplicationDetail({ session }) {
   };
 
   const deleteApplication = async () => {
-    if (password !== session.user.email) { // Simple password check, replace with a more secure method
-        toast.error('Incorrect password');
-        return;
-    }
-    
     setButtonLoading((prev) => ({ ...prev, deleteApp: true }));
     try {
-        // Delete related records first
-        await supabase.from('important_dates').delete().eq('application_id', id);
-        await supabase.from('requirements').delete().eq('application_id', id);
-        await supabase.from('recommenders').delete().eq('application_id', id);
-        
-        const { error } = await supabase.from('applications').delete().eq('id', id);
-
-        if (error) {
-            toast.error('Failed to delete application');
-            console.error(error);
-        } else {
-            toast.success('Application deleted successfully!');
-            navigate('/');
-        }
-    } catch (error) {
-        toast.error('An unexpected error occurred during deletion.');
-        console.error(error);
-    } finally {
+      // Re-authenticate the user by signing in with provided password
+      const { data: signData, error: signError } = await supabase.auth.signInWithPassword({ email: session.user.email, password });
+      if (signError) {
+        toast.error('Incorrect password');
         setButtonLoading((prev) => ({ ...prev, deleteApp: false }));
-        setShowDeleteModal(false);
+        return;
+      }
+
+      // Delete related records first
+      await supabase.from('important_dates').delete().eq('application_id', id);
+      await supabase.from('requirements').delete().eq('application_id', id);
+      await supabase.from('recommenders').delete().eq('application_id', id);
+
+      const { error } = await supabase.from('applications').delete().eq('id', id);
+
+      if (error) {
+        toast.error('Failed to delete application');
+        console.error(error);
+      } else {
+        toast.success('Application deleted successfully!');
+        navigate('/');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred during deletion.');
+      console.error(error);
+    } finally {
+      setButtonLoading((prev) => ({ ...prev, deleteApp: false }));
+      setShowDeleteModal(false);
+      setPassword('');
     }
   };
 
