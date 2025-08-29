@@ -8,7 +8,7 @@ const usStates = [
   'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
 ];
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -195,7 +195,9 @@ export default function AddApplication({ session }) {
         </nav>
         <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
           <h1 className="text-3xl font-bold mb-6" style={{ color: '#313E50' }}>Add New Application</h1>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
+          <input type="text" name="fake-username" autoComplete="off" style={{ display: 'none' }} />
+          <input type="password" name="fake-password" autoComplete="off" style={{ display: 'none' }} />
           {/* Reordered fields */}
           <div className="mb-4">
             <label htmlFor="country" className="block text-neutralDark font-bold mb-2">
@@ -204,6 +206,7 @@ export default function AddApplication({ session }) {
             <select
               id="country"
               name="country"
+              autoComplete="off"
               value={formData.country}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -223,6 +226,7 @@ export default function AddApplication({ session }) {
               <select
                 id="state"
                 name="state"
+                autoComplete="address-level1"
                 value={formData.state || ''}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 rounded"
@@ -238,6 +242,7 @@ export default function AddApplication({ session }) {
                 type="text"
                 id="state"
                 name="state"
+                autoComplete="off"
                 value={formData.state || ''}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 rounded"
@@ -251,6 +256,7 @@ export default function AddApplication({ session }) {
               type="text"
               id="city"
               name="city"
+              autoComplete="off"
               value={formData.city || ''}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -265,6 +271,7 @@ export default function AddApplication({ session }) {
               type="text"
               id="school_name"
               name="school_name"
+              autoComplete="off"
               value={formData.school_name}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -279,6 +286,7 @@ export default function AddApplication({ session }) {
               type="text"
               id="program"
               name="program"
+              autoComplete="off"
               value={formData.program}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -292,6 +300,7 @@ export default function AddApplication({ session }) {
             <select
               id="level"
               name="level"
+              autoComplete="off"
               value={formData.level}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -311,6 +320,7 @@ export default function AddApplication({ session }) {
               type="text"
               id="faculty"
               name="faculty"
+              autoComplete="off"
               value={formData.faculty}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -325,6 +335,7 @@ export default function AddApplication({ session }) {
               type="text"
               id="department"
               name="department"
+              autoComplete="off"
               value={formData.department}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -338,6 +349,7 @@ export default function AddApplication({ session }) {
               type="email"
               id="application_email"
               name="application_email"
+              autoComplete="off"
               value={formData.application_email}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -351,6 +363,7 @@ export default function AddApplication({ session }) {
               type="number"
               id="application_fee"
               name="application_fee"
+              autoComplete="off"
               value={formData.application_fee}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -378,6 +391,7 @@ export default function AddApplication({ session }) {
                 type="text"
                 id="fee_waiver_details"
                 name="fee_waiver_details"
+                autoComplete="off"
                 value={formData.fee_waiver_details}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 rounded"
@@ -391,6 +405,7 @@ export default function AddApplication({ session }) {
             <select
               id="funding_status"
               name="funding_status"
+              autoComplete="off"
               value={formData.funding_status}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -410,6 +425,7 @@ export default function AddApplication({ session }) {
               type="url"
               id="program_link"
               name="program_link"
+              autoComplete="off"
               value={formData.program_link}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"
@@ -423,6 +439,7 @@ export default function AddApplication({ session }) {
               type="url"
               id="portal_link"
               name="portal_link"
+              autoComplete="off"
               value={formData.portal_link}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded"

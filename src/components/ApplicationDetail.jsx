@@ -753,6 +753,8 @@ export default function ApplicationDetail({ session }) {
                 </p>
                 <input
                   type="password"
+                  name="confirm-delete-password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="mt-4 w-full p-2 border border-gray-300 rounded"
@@ -785,6 +787,8 @@ export default function ApplicationDetail({ session }) {
             <span className="font-medium text-neutralDark">Country:</span>
             {editMode ? (
               <select
+                name="country"
+                autoComplete="off"
                 value={appChanges.country || app.country}
                 onChange={(e) => updateAppField('country', e.target.value)}
                 className="ml-2 p-1 border border-gray-300 rounded w-3/4"
@@ -804,6 +808,8 @@ export default function ApplicationDetail({ session }) {
             {editMode ? (
               (appChanges.country || app.country) === 'USA' ? (
                 <select
+                  name="state"
+                  autoComplete="address-level1"
                   value={appChanges.state || app.state || ''}
                   onChange={(e) => updateAppField('state', e.target.value)}
                   className="ml-2 p-1 border border-gray-300 rounded w-3/4"
@@ -817,6 +823,8 @@ export default function ApplicationDetail({ session }) {
               ) : (
                 <input
                   type="text"
+                  name="state"
+                  autoComplete="address-level1"
                   value={appChanges.state || app.state || ''}
                   onChange={(e) => updateAppField('state', e.target.value)}
                   className="ml-2 p-1 border border-gray-300 rounded w-3/4"
@@ -832,6 +840,8 @@ export default function ApplicationDetail({ session }) {
             {editMode ? (
               <input
                 type="text"
+                name="city"
+                autoComplete="address-level2"
                 value={appChanges.city || app.city || ''}
                 onChange={(e) => updateAppField('city', e.target.value)}
                 className="ml-2 p-1 border border-gray-300 rounded w-3/4"
@@ -845,6 +855,8 @@ export default function ApplicationDetail({ session }) {
             <span className="font-medium text-neutralDark">Program Level:</span>
             {editMode ? (
               <select
+                name="level"
+                autoComplete="off"
                 value={appChanges.level || app.level}
                 onChange={(e) => updateAppField('level', e.target.value)}
                 className="ml-2 p-1 border border-gray-300 rounded"
@@ -862,14 +874,16 @@ export default function ApplicationDetail({ session }) {
             {editMode ? (
               <>
                 <input
-                  type="text"
-                  value={appChanges.application_fee || app.application_fee}
-                  onChange={(e) => {
-                    updateAppField('application_fee', e.target.value);
-                    setNewRequirement({ ...newRequirement, application_fee: e.target.value });
-                  }}
-                  className="ml-2 p-1 border border-gray-300 rounded w-1/2"
-                  placeholder="e.g., $100 or 0"
+                    type="text"
+                    name="application_fee"
+                    autoComplete="off"
+                    value={appChanges.application_fee || app.application_fee}
+                    onChange={(e) => {
+                      updateAppField('application_fee', e.target.value);
+                      setNewRequirement({ ...newRequirement, application_fee: e.target.value });
+                    }}
+                    className="ml-2 p-1 border border-gray-300 rounded w-1/2"
+                    placeholder="e.g., $100 or 0"
                   disabled={appChanges.fee_waived ?? app.fee_waived}
                   required={!(appChanges.fee_waived ?? app.fee_waived) && requirements.some((req) => req.name === 'Application Fee')}
                 />
@@ -889,14 +903,16 @@ export default function ApplicationDetail({ session }) {
                   <div className="mt-2">
                     <label className="block text-neutralDark mb-1">Waiver Details</label>
                     <input
-                      type="text"
-                      value={appChanges.fee_waiver_details || app.fee_waiver_details || ''}
-                      onChange={(e) => {
-                        updateAppField('fee_waiver_details', e.target.value);
-                        setNewRequirement({ ...newRequirement, fee_waiver_details: e.target.value });
-                      }}
-                      className="ml-2 p-1 border border-gray-300 rounded w-3/4"
-                      placeholder="e.g., Financial hardship waiver"
+                        type="text"
+                        name="fee_waiver_details"
+                        autoComplete="off"
+                        value={appChanges.fee_waiver_details || app.fee_waiver_details || ''}
+                        onChange={(e) => {
+                          updateAppField('fee_waiver_details', e.target.value);
+                          setNewRequirement({ ...newRequirement, fee_waiver_details: e.target.value });
+                        }}
+                        className="ml-2 p-1 border border-gray-300 rounded w-3/4"
+                        placeholder="e.g., Financial hardship waiver"
                     />
                   </div>
                 )}
@@ -908,6 +924,8 @@ export default function ApplicationDetail({ session }) {
           <div className="mb-4">
             <span className="font-medium text-neutralDark">Status:</span>
             <select
+              name="status"
+              autoComplete="off"
               value={appChanges.status || app.status}
               onChange={(e) => updateAppField('status', e.target.value)}
               className={`ml-2 p-1 border border-gray-300 rounded ${getStatusColor(appChanges.status || app.status, 'application')}`}
@@ -928,6 +946,8 @@ export default function ApplicationDetail({ session }) {
             <span className="font-medium text-neutralDark">Funding:</span>
             {editMode ? (
               <select
+                name="funding_status"
+                autoComplete="off"
                 value={appChanges.funding_status || app.funding_status}
                 onChange={(e) => updateAppField('funding_status', e.target.value)}
                 className="ml-2 p-1 border border-gray-300 rounded"
@@ -975,6 +995,8 @@ export default function ApplicationDetail({ session }) {
               {editMode ? (
                 <input
                   type="url"
+                  name="program_link"
+                  autoComplete="off"
                   value={appChanges.program_link || app.program_link || ''}
                   onChange={(e) => updateAppField('program_link', e.target.value)}
                   className="ml-2 p-1 border border-gray-300 rounded w-3/4"
@@ -998,6 +1020,8 @@ export default function ApplicationDetail({ session }) {
               {editMode ? (
                 <input
                   type="url"
+                  name="portal_link"
+                  autoComplete="off"
                   value={appChanges.portal_link || app.portal_link || ''}
                   onChange={(e) => updateAppField('portal_link', e.target.value)}
                   className="ml-2 p-1 border border-gray-300 rounded w-3/4"
@@ -1023,12 +1047,16 @@ export default function ApplicationDetail({ session }) {
                   <>
                     <input
                       type="text"
+                      name={`date-${date.id}-name`}
+                      autoComplete="off"
                       value={pendingDateChanges[date.id]?.name || date.name}
                       onChange={(e) => updateDateField(date.id, 'name', e.target.value)}
                       className="p-1 border border-gray-300 rounded flex-1"
                     />
                     <input
                       type="date"
+                      name={`date-${date.id}-date`}
+                      autoComplete="off"
                       value={pendingDateChanges[date.id]?.date || date.date}
                       onChange={(e) => updateDateField(date.id, 'date', e.target.value)}
                       className="p-1 border border-gray-300 rounded flex-1"
@@ -1149,6 +1177,8 @@ export default function ApplicationDetail({ session }) {
                   {['Statement of Purpose', 'Personal Statement', 'Writing Samples', 'Research Proposal'].includes(req.name) && (
                     <div className="flex flex-col space-y-2">
                       <select
+                        name={`req-${req.id}-criteria_type`}
+                        autoComplete="off"
                         value={pendingChanges[req.id]?.criteria_type || req.criteria_type || ''}
                         onChange={(e) => updateRequirementField(req.id, 'criteria_type', e.target.value || null)}
                         className="p-1 border border-gray-300 rounded"
@@ -1163,6 +1193,8 @@ export default function ApplicationDetail({ session }) {
                       {(pendingChanges[req.id]?.criteria_type || req.criteria_type) !== 'Unspecified' && (
                         <input
                           type="number"
+                          name={`req-${req.id}-criteria_value`}
+                          autoComplete="off"
                           value={pendingChanges[req.id]?.criteria_value || req.criteria_value || ''}
                           onChange={(e) => updateRequirementField(req.id, 'criteria_value', e.target.value ? parseInt(e.target.value) : null)}
                           className="p-1 border border-gray-300 rounded"
@@ -1174,6 +1206,8 @@ export default function ApplicationDetail({ session }) {
                   )}
                   {req.name === 'Transcripts' && (
                     <select
+                      name={`req-${req.id}-type`}
+                      autoComplete="off"
                       value={pendingChanges[req.id]?.type || req.type || ''}
                       onChange={(e) => updateRequirementField(req.id, 'type', e.target.value || null)}
                       className="p-1 border border-gray-300 rounded"
@@ -1187,6 +1221,8 @@ export default function ApplicationDetail({ session }) {
                   {req.name === 'GPA/Class of Degree' && (
                     <input
                       type="text"
+                      name={`req-${req.id}-conversion`}
+                      autoComplete="off"
                       value={pendingChanges[req.id]?.conversion || req.conversion || ''}
                       onChange={(e) => updateRequirementField(req.id, 'conversion', e.target.value || null)}
                       className="p-1 border border-gray-300 rounded"
@@ -1197,6 +1233,8 @@ export default function ApplicationDetail({ session }) {
                   {req.name === 'Standardized Test Scores (GRE)' && (
                     <input
                       type="text"
+                      name={`req-${req.id}-min_score`}
+                      autoComplete="off"
                       value={pendingChanges[req.id]?.min_score || req.min_score || ''}
                       onChange={(e) => updateRequirementField(req.id, 'min_score', e.target.value || null)}
                       className="p-1 border border-gray-300 rounded"
@@ -1209,6 +1247,8 @@ export default function ApplicationDetail({ session }) {
                       <label>
                         <input
                           type="checkbox"
+                          name={`req-${req.id}-waived`}
+                          autoComplete="off"
                           checked={pendingChanges[req.id]?.waived ?? req.waived}
                           onChange={(e) => updateRequirementField(req.id, 'waived', e.target.checked)}
                         />{' '}
@@ -1216,6 +1256,8 @@ export default function ApplicationDetail({ session }) {
                       </label>
                       {!(pendingChanges[req.id]?.waived ?? req.waived) && (
                         <select
+                          name={`req-${req.id}-test_type`}
+                          autoComplete="off"
                           value={pendingChanges[req.id]?.test_type || req.test_type || ''}
                           onChange={(e) => updateRequirementField(req.id, 'test_type', e.target.value || null)}
                           className="p-1 border border-gray-300 rounded"
@@ -1232,6 +1274,8 @@ export default function ApplicationDetail({ session }) {
                   {req.name === 'Credential Evaluation' && (
                     <input
                       type="text"
+                      name={`req-${req.id}-min_score_text`}
+                      autoComplete="off"
                       value={pendingChanges[req.id]?.min_score || req.min_score || ''}
                       onChange={(e) => updateRequirementField(req.id, 'min_score', e.target.value || null)}
                       className="p-1 border border-gray-300 rounded"
@@ -1242,6 +1286,8 @@ export default function ApplicationDetail({ session }) {
                     <div className="flex flex-col space-y-2">
                       <input
                         type="text"
+                        name={`req-${req.id}-application_fee`}
+                        autoComplete="off"
                         value={appChanges.application_fee || app.application_fee}
                         onChange={(e) => {
                           updateAppField('application_fee', e.target.value);
@@ -1267,6 +1313,8 @@ export default function ApplicationDetail({ session }) {
                       {(appChanges.fee_waived ?? app.fee_waived) && (
                         <input
                           type="text"
+                          name={`req-${req.id}-fee_waiver_details`}
+                          autoComplete="off"
                           value={appChanges.fee_waiver_details || app.fee_waiver_details || ''}
                           onChange={(e) => {
                             updateAppField('fee_waiver_details', e.target.value);
@@ -1282,6 +1330,8 @@ export default function ApplicationDetail({ session }) {
                   {req.name === 'Recommenders' && (
                     <input
                       type="number"
+                      name={`req-${req.id}-num_recommenders`}
+                      autoComplete="off"
                       value={pendingChanges[req.id]?.num_recommenders || req.num_recommenders || ''}
                       onChange={(e) => updateRequirementField(req.id, 'num_recommenders', e.target.value ? parseInt(e.target.value) : null)}
                       className="p-1 border border-gray-300 rounded"
@@ -1373,6 +1423,8 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name === 'GPA/Class of Degree' && (
                 <input
                   type="text"
+                  name="new_req_conversion"
+                  autoComplete="off"
                   value={newRequirement.conversion || ''}
                   onChange={(e) => setNewRequirement({ ...newRequirement, conversion: e.target.value })}
                   className="p-1 border border-gray-300 rounded flex-1"
@@ -1383,6 +1435,8 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name === 'Standardized Test Scores (GRE)' && (
                 <input
                   type="text"
+                  name="new_req_min_score"
+                  autoComplete="off"
                   value={newRequirement.min_score || ''}
                   onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
                   className="p-1 border border-gray-300 rounded flex-1"
@@ -1418,6 +1472,8 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name === 'Credential Evaluation' && (
                 <input
                   type="text"
+                  name="new_req_min_score_text"
+                  autoComplete="off"
                   value={newRequirement.min_score || ''}
                   onChange={(e) => setNewRequirement({ ...newRequirement, min_score: e.target.value })}
                   className="p-1 border border-gray-300 rounded flex-1"
@@ -1427,6 +1483,8 @@ export default function ApplicationDetail({ session }) {
               {newRequirement.name === 'Recommenders' && (
                 <input
                   type="number"
+                  name="new_req_num_recommenders"
+                  autoComplete="off"
                   value={newRequirement.num_recommenders || ''}
                   onChange={(e) => setNewRequirement({ ...newRequirement, num_recommenders: e.target.value })}
                   className="p-1 border border-gray-300 rounded flex-1"
@@ -1439,6 +1497,8 @@ export default function ApplicationDetail({ session }) {
                 <>
                   <input
                     type="text"
+                    name="new_req_application_fee"
+                    autoComplete="off"
                     value={newRequirement.application_fee}
                     onChange={(e) => {
                       setNewRequirement({ ...newRequirement, application_fee: e.target.value });
@@ -1464,6 +1524,8 @@ export default function ApplicationDetail({ session }) {
                   {newRequirement.fee_waived && (
                     <input
                       type="text"
+                      name="new_req_fee_waiver_details"
+                      autoComplete="off"
                       value={newRequirement.fee_waiver_details || ''}
                       onChange={(e) => {
                         setNewRequirement({ ...newRequirement, fee_waiver_details: e.target.value });
@@ -1559,6 +1621,8 @@ export default function ApplicationDetail({ session }) {
             <td className="p-2">{rec.status === 'Unidentified' ? <span className="text-gray-400">Unidentified</span> : rec.type || '-'}</td>
             <td className="p-2">
               <select
+                name={`rec-${rec.id}-status`}
+                autoComplete="off"
                 value={rec.status}
                 onChange={(e) => updateRecommenderStatus(rec.id, e.target.value)}
                 className={`p-1 border border-gray-300 rounded ${getStatusColor(rec.status, 'recommender')} ${editMode ? 'cursor-not-allowed opacity-50' : ''}`}
@@ -1609,6 +1673,8 @@ export default function ApplicationDetail({ session }) {
       <div className="flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 mb-6">
         <input
           type="text"
+          name="new_recommender_name"
+          autoComplete="off"
           value={newRecommender.name || ''}
           onChange={(e) => setNewRecommender({ ...newRecommender, name: e.target.value })}
           className="p-1 border border-gray-300 rounded flex-1"
@@ -1617,6 +1683,8 @@ export default function ApplicationDetail({ session }) {
         />
         <input
           type="email"
+          name="new_recommender_email"
+          autoComplete="off"
           value={newRecommender.email || ''}
           onChange={(e) => setNewRecommender({ ...newRecommender, email: e.target.value })}
           className="p-1 border border-gray-300 rounded flex-1"

@@ -153,6 +153,8 @@ export default function Timelines() {
       <div className="mb-2 flex items-center gap-2">
         {/* Event type dropdown */}
         <select
+          name="event_type"
+          autoComplete="off"
           className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
           value={eventType}
           onChange={e => setEventType(e.target.value)}
@@ -259,6 +261,8 @@ export default function Timelines() {
                           <label key={opt} className="block text-sm cursor-pointer text-gray-800">
                             <input
                               type="checkbox"
+                              name={`filter-program-${opt}`}
+                              autoComplete="off"
                               checked={filters.program.includes(opt)}
                               onChange={() => handleOptionChange('program', opt)}
                               className="mr-2"
@@ -300,6 +304,8 @@ export default function Timelines() {
                           <label key={opt} className="block text-sm cursor-pointer text-gray-800">
                             <input
                               type="checkbox"
+                              name={`filter-country-${opt}`}
+                              autoComplete="off"
                               checked={filters.country.includes(opt)}
                               onChange={() => handleOptionChange('country', opt)}
                               className="mr-2"
@@ -341,6 +347,8 @@ export default function Timelines() {
                           <label key={opt} className="block text-sm cursor-pointer text-gray-800">
                             <input
                               type="checkbox"
+                              name={`filter-status-${opt}`}
+                              autoComplete="off"
                               checked={filters.status.includes(opt)}
                               onChange={() => handleOptionChange('status', opt)}
                               className="mr-2"
@@ -382,6 +390,8 @@ export default function Timelines() {
                           <label key={opt} className="block text-sm cursor-pointer text-gray-800">
                             <input
                               type="checkbox"
+                              name={`filter-level-${opt}`}
+                              autoComplete="off"
                               checked={filters.level.includes(opt)}
                               onChange={() => handleOptionChange('level', opt)}
                               className="mr-2"

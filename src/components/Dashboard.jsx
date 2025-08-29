@@ -204,7 +204,7 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium mb-1">Event type</label>
-                <select value={eventType} onChange={e => setEventType(e.target.value)} className="w-full border rounded px-2 py-1 text-sm">
+                <select name="dashboard-event-type" autoComplete="off" value={eventType} onChange={e => setEventType(e.target.value)} className="w-full border rounded px-2 py-1 text-sm">
                   <option value="all">All</option>
                   <option value="future">Future</option>
                   <option value="past">Past</option>
@@ -221,7 +221,7 @@ export default function Dashboard() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto">
                     {options[type].length === 0 ? <div className="text-xs text-gray-400">No options</div> : options[type].map(opt => (
-                      <label key={opt} className="text-sm"><input type="checkbox" checked={filters[type].includes(opt)} onChange={() => handleOptionChange(type, opt)} className="mr-2" />{opt}</label>
+                      <label key={opt} className="text-sm"><input type="checkbox" name={`${type}-${opt}`} autoComplete="off" checked={filters[type].includes(opt)} onChange={() => handleOptionChange(type, opt)} className="mr-2" />{opt}</label>
                     ))}
                   </div>
                 </div>

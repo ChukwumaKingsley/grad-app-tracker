@@ -46,7 +46,8 @@ export default function UserProfile({ session }) {
             <label className="text-sm font-medium" style={{ color: '#313E50' }}>Email</label>
             <p className="mt-1 p-2 bg-charcoal-100 rounded-md text-slate_gray-900">{session?.user?.email}</p>
           </div>
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
+          <form onSubmit={handleUpdateProfile} className="space-y-4" autoComplete="off">
+            <input type="text" name="fake-name" autoComplete="off" style={{ display: 'none' }} />
             <div className="flex flex-col">
               <label htmlFor="displayName" className="text-sm font-medium" style={{ color: '#313E50' }}>Display Name</label>
               <input
@@ -100,10 +101,12 @@ export default function UserProfile({ session }) {
               <div>
                 <label className="text-sm font-medium">New password</label>
                 <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="mt-1 p-2 w-full border rounded-md" placeholder="New password" />
+                  <input type="hidden" name="dummy-password" autoComplete="off" />
+                  <input type="hidden" name="dummy-confirm-password" autoComplete="off" />
               </div>
               <div>
                 <label className="text-sm font-medium">Confirm password</label>
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="mt-1 p-2 w-full border rounded-md" placeholder="Confirm password" />
+                  <input type="password" name="confirm-password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="mt-1 p-2 w-full border rounded-md" placeholder="Confirm password" />
               </div>
               <div>
                 <button type="submit" className="bg-red-600 text-white py-2 px-4 rounded w-full md:w-auto font-semibold" disabled={pwLoading}>{pwLoading ? 'Updating...' : 'Change password'}</button>
