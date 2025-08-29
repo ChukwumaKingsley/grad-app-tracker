@@ -4,9 +4,7 @@
 	.text-neutral-300 { color: #d4d4d8 !important; }
 }
 
-html, body {
-  overflow-x: hidden !important;
-}
+/* Keep default overflow behaviour on root so inner scrollable containers (like tables) can show horizontal scrollbars when needed */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
