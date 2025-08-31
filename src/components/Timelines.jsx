@@ -84,6 +84,22 @@ export default function Timelines() {
 
       const calendarEvents = filtered.map(d => ({ id: d.id, title: d.name + (d.application?.program ? ` — ${d.application.program}` : ''), start: new Date(d.date), end: new Date(d.date), resource: d }));
 
+      // Provide persisted calendar center date (short TTL) so returning soon restores the focused date
+      const PERSIST_KEY = 'timelinesCalendarCenter';
+      const PERSIST_TS = 'timelinesCalendarCenterTs';
+      const PERSIST_TTL = 1000 * 60 * 60; // 1 hour
+      function loadPersistedDate() {
+        try {
+          const s = localStorage.getItem(PERSIST_KEY);
+          const ts = parseInt(localStorage.getItem(PERSIST_TS) || '0', 10);
+          if (s && Date.now() - ts < PERSIST_TTL) return new Date(s);
+        } catch (e) {
+          // ignore
+        }
+        return null;
+      }
+      const persistedCenter = loadPersistedDate();
+
       return (
         <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 md:px-8 relative">
           <div className="flex justify-between items-center mb-6">
@@ -181,7 +197,7 @@ export default function Timelines() {
                 <button className={`px-2 py-1 rounded ${calendarMode === 'agenda' ? 'bg-blue-600 text-white' : 'bg-white border'}`} onClick={() => { setCalendarMode('agenda'); localStorage.setItem('timelinesCalendarMode', 'agenda'); }}>Agenda</button>
                 <button className={`px-2 py-1 rounded ${calendarMode === 'year' ? 'bg-blue-600 text-white' : 'bg-white border'}`} onClick={() => { setCalendarMode('year'); localStorage.setItem('timelinesCalendarMode', 'year'); }}>Year</button>
               </div>
-              <CalendarView events={calendarEvents} viewMode={calendarMode} onViewChange={v => { setCalendarMode(v); localStorage.setItem('timelinesCalendarMode', v); }} />
+              <CalendarView events={calendarEvents} viewMode={calendarMode} onViewChange={v => { setCalendarMode(v); localStorage.setItem('timelinesCalendarMode', v); }} initialDate={persistedCenter} />
             </div>
           )}
         </div>

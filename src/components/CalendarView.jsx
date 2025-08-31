@@ -8,10 +8,10 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek: (date) => startOfWeek(date, { weekStartsOn: 0 }), getDay, locales });
 
-function YearView({ events }) {
-  // show 12 months with counts
+function YearView({ events, year }) {
+  // show 12 months with counts for provided year
   const months = Array.from({ length: 12 }).map((_, i) => {
-    const monthStart = new Date(new Date().getFullYear(), i, 1);
+    const monthStart = new Date(year, i, 1);
     const count = events.filter(e => e.start.getMonth() === i && e.start.getFullYear() === monthStart.getFullYear()).length;
     return { i, label: monthStart.toLocaleString('default', { month: 'short' }), count };
   });
@@ -30,8 +30,24 @@ function YearView({ events }) {
 
 export default function CalendarView({ events = [], viewMode = 'month', onViewChange }) {
   const selectedView = viewMode === 'year' ? Views.MONTH : viewMode.toUpperCase();
+  // persistence keys and TTL (1 hour)
+  const PERSIST_KEY = 'timelinesCalendarCenter';
+  const PERSIST_TS = 'timelinesCalendarCenterTs';
+  const PERSIST_TTL = 1000 * 60 * 60; // 1 hour
+
+  function loadPersistedDate() {
+    try {
+      const s = localStorage.getItem(PERSIST_KEY);
+      const ts = parseInt(localStorage.getItem(PERSIST_TS) || '0', 10);
+      if (s && Date.now() - ts < PERSIST_TTL) return new Date(s);
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
   const [selectedEvent, setSelectedEvent] = useState(null);
   const modalRef = useRef();
+  const [currentDate, setCurrentDate] = useState(() => loadPersistedDate() || new Date());
 
   useEffect(() => {
     function handleKey(e) {
@@ -41,6 +57,16 @@ export default function CalendarView({ events = [], viewMode = 'month', onViewCh
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
+  // persist current date with TTL whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(PERSIST_KEY, currentDate.toISOString());
+      localStorage.setItem(PERSIST_TS, Date.now().toString());
+    } catch (e) {
+      // ignore
+    }
+  }, [currentDate]);
+
   function handleSelectEvent(event) {
     // event.resource contains the original deadline object
     setSelectedEvent(event.resource || event);
@@ -48,7 +74,7 @@ export default function CalendarView({ events = [], viewMode = 'month', onViewCh
 
   function closeModal() { setSelectedEvent(null); }
 
-  if (viewMode === 'year') return <YearView events={events} />;
+  if (viewMode === 'year') return <YearView events={events} year={currentDate.getFullYear()} />;
 
   return (
     <div className="bg-white p-2 rounded">
@@ -60,6 +86,11 @@ export default function CalendarView({ events = [], viewMode = 'month', onViewCh
         style={{ height: 600 }}
         views={{ month: true, week: true, day: true, agenda: true }}
         view={viewMode}
+        date={currentDate}
+        onNavigate={(date, view) => {
+          // update current date when user navigates calendar
+          setCurrentDate(date instanceof Date ? date : new Date(date));
+        }}
         onView={v => onViewChange(v)}
         onSelectEvent={handleSelectEvent}
         popup
