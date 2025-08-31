@@ -32,7 +32,7 @@ const countries = [
   'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
 ];
 import { supabase } from '../supabaseClient';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SkeletonDetail } from './SkeletonLoader';
@@ -42,6 +42,7 @@ import debounce from 'lodash/debounce';
 export default function ApplicationDetail({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [app, setApp] = useState(null);
   const [importantDates, setImportantDates] = useState([]);
   const [requirements, setRequirements] = useState([]);
@@ -726,7 +727,16 @@ export default function ApplicationDetail({ session }) {
         <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick />
         <nav className="text-sm text-neutralDark mb-4">
-          <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.school_name || app.program}</span> <span className="text-gray-500">/ {app.program}</span>
+          {/* prefer a breadcrumb origin passed via navigation state (e.g. from Timelines) */}
+          {location?.state?.from === '/timelines' ? (
+            <>
+              <Link to="/timelines" className="text-secondary hover:underline">Timelines</Link> &gt; <span className="text-neutralDark">{app.school_name || app.program}</span> <span className="text-gray-500">/ {app.program}</span>
+            </>
+          ) : (
+            <>
+              <Link to="/applications" className="text-secondary hover:underline">Dashboard</Link> &gt; <span className="text-neutralDark">{app.school_name || app.program}</span> <span className="text-gray-500">/ {app.program}</span>
+            </>
+          )}
         </nav>
         <div className="flex justify-between items-center mb-6">
     {editMode ? (

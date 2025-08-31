@@ -80,7 +80,7 @@ export default function CalendarView({ events = [], viewMode = 'month', onViewCh
             </div>
             <div className="flex justify-end gap-2">
               {selectedEvent.application?.id && (
-                <Link onClick={closeModal} to={`/application/${selectedEvent.application.id}`} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">View Program</Link>
+                <Link onClick={closeModal} to={`/application/${selectedEvent.application.id}`} state={{ from: '/timelines' }} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">View Program</Link>
               )}
               <button onClick={closeModal} className="px-3 py-1 border rounded text-sm">Close</button>
             </div>

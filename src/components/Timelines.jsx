@@ -162,7 +162,7 @@ export default function Timelines() {
                         <td className="px-4 py-2">{formatted}</td>
                         <td className="px-4 py-2">{countdown}</td>
                         <td className="px-4 py-2">{d.name}</td>
-                        <td className="px-4 py-2">{d.application?.id ? <Link to={`/application/${d.application.id}`} className="text-blue-700 hover:underline">{d.application.program}</Link> : d.application?.program}</td>
+                        <td className="px-4 py-2">{d.application?.id ? <Link to={`/application/${d.application.id}`} state={{ from: '/timelines' }} className="text-blue-700 hover:underline">{d.application.program}</Link> : d.application?.program}</td>
                         <td className="px-4 py-2">{d.application?.country}</td>
                         <td className="px-4 py-2">{d.application?.status}</td>
                         <td className="px-4 py-2">{d.application?.level}</td>
