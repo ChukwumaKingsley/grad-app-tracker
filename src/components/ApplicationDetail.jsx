@@ -251,18 +251,35 @@ export default function ApplicationDetail({ session }) {
   };
 
   // Start adding a new date by showing inline inputs (no request yet)
+  const toDatetimeLocal = (isoOrDate) => {
+    if (!isoOrDate) return '';
+    const d = new Date(isoOrDate);
+    if (isNaN(d)) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const fromDatetimeLocalToISO = (localValue) => {
+    try {
+      const d = new Date(localValue);
+      return d.toISOString();
+    } catch (e) {
+      return localValue;
+    }
+  };
+
   const addImportantDate = () => {
-    setNewDateDraft({ name: '', date: new Date().toISOString().split('T')[0] });
+    setNewDateDraft({ name: '', date: toDatetimeLocal(new Date()) });
   };
 
   // Persist the drafted date to the server
   const createImportantDate = async () => {
     if (!newDateDraft || !newDateDraft.name || !newDateDraft.date) {
-      toast.error('Please provide both name and date');
+      toast.error('Please provide both name and date/time');
       return;
     }
     setButtonLoading((prev) => ({ ...prev, addDate: true }));
-    const newDate = { application_id: id, name: newDateDraft.name, date: newDateDraft.date };
+    const newDate = { application_id: id, name: newDateDraft.name, date: fromDatetimeLocalToISO(newDateDraft.date) };
     const { data, error } = await supabase.from('important_dates').insert([newDate]).select().single();
     setButtonLoading((prev) => ({ ...prev, addDate: false }));
     if (error) {
@@ -286,7 +303,9 @@ export default function ApplicationDetail({ session }) {
     setButtonLoading((prev) => ({ ...prev, saveDates: true }));
     for (const [dateId, changes] of Object.entries(pendingDateChanges)) {
       if (Object.keys(changes).length > 0) {
-        const { error } = await supabase.from('important_dates').update(changes).eq('id', dateId);
+        const payload = { ...changes };
+        if (payload.date) payload.date = fromDatetimeLocalToISO(payload.date);
+        const { error } = await supabase.from('important_dates').update(payload).eq('id', dateId);
         if (error) {
           toast.error(`Failed to update date ${dateId}`);
           console.error(error);
@@ -1124,10 +1143,10 @@ export default function ApplicationDetail({ session }) {
                         className="p-1 border border-gray-300 rounded flex-1"
                       />
                       <input
-                        type="date"
+                        type="datetime-local"
                         name={`date-${date.id}-date`}
                         autoComplete="off"
-                        value={pendingDateChanges[date.id]?.date || date.date}
+                        value={pendingDateChanges[date.id]?.date || toDatetimeLocal(date.date)}
                         onChange={(e) => updateDateField(date.id, 'date', e.target.value)}
                         className="p-1 border border-gray-300 rounded"
                       />
@@ -1135,7 +1154,7 @@ export default function ApplicationDetail({ session }) {
                   ) : (
                     <span className="font-medium">{date.name}</span>
                   )}
-                  <div className="text-sm text-gray-500">{date.date}</div>
+                  <div className="text-sm text-gray-500">{new Date(date.date).toLocaleString()}</div>
                 </div>
                 {editMode && (
                   <div className="mt-2 md:mt-0 flex gap-2 items-center">

@@ -13,7 +13,7 @@ function formatDateCountdown(dateStr) {
   const diffMs = date.setHours(0,0,0,0) - now.setHours(0,0,0,0);
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
   const options = { year: '2-digit', month: 'short', day: 'numeric' };
-  const formatted = date.toLocaleDateString('en-US', options);
+  const formatted = date.toLocaleDateString('en-US', options) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   let countdown = '';
   if (diffDays > 0) countdown = `${diffDays} day${diffDays === 1 ? '' : 's'}`;
   else if (diffDays < 0) countdown = `${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'} ago`;
@@ -82,7 +82,12 @@ export default function Timelines() {
         return true;
       });
 
-      const calendarEvents = filtered.map(d => ({ id: d.id, title: d.name + (d.application?.program ? ` — ${d.application.program}` : ''), start: new Date(d.date), end: new Date(d.date), resource: d }));
+      const calendarEvents = filtered.map(d => {
+        const start = new Date(d.date);
+        // make end a few minutes after start so the calendar can place it correctly
+        const end = new Date(start.getTime() + 1000 * 60 * 30);
+        return { id: d.id, title: d.name + (d.application?.program ? ` — ${d.application.program}` : ''), start, end, resource: d };
+      });
 
       // Provide persisted calendar center date (short TTL) so returning soon restores the focused date
       const PERSIST_KEY = 'timelinesCalendarCenter';
